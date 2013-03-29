@@ -6,7 +6,6 @@ import System.Exit
 import Control.Arrow
 import Control.Monad.Reader
 import Control.Exception
---import Control.OldException
 import Text.Printf
 import Prelude hiding (catch)
 
@@ -14,8 +13,8 @@ import Prelude hiding (catch)
 import NLP.WordNet
 
 -- Test
---foooo = NLP.Nerf.train 3 "foo" "bar" "baz"
-{-fooo :: IO WordNetEnv
+{-
+fooo :: IO WordNetEnv
 fooo = do
     initializeWordNetWithOptions (wndir "/usr/share/wordnet/dict/") Nothing
     runs $ searchByOverview (getOverview "dog") Noun AllSenses
@@ -47,7 +46,6 @@ main = bracket connect disconnect loop
   where
     disconnect = hClose . socket
     loop st    = catchIOError (runReaderT run st) (const $ return ())
-    --loop st      = catch (runReaderT run st) (\(ExitException _) -> return ()) -- *** Control.Exception with base-4
 
 catchIOError :: IO a -> (IOError -> IO a) -> IO a
 catchIOError = catch
@@ -87,16 +85,17 @@ listen h = forever $ do
 -- Get the actual message.
 getMsg :: [String] -> [String]
 getMsg a
-    | length (intersect a ["PRIVMSG"]) > 0 = b
+--    | a!!1 == ["PRIVMSG"] = (drop 1 (a!!3)) : (drop 4 a)
+    | (head $ drop 1 a) == "PRIVMSG" = (drop 1 (a!!3)) : (drop 4 a)
     | otherwise = []
-  where
-    b = (drop 1 (a!!3)) : (drop 4 a)
 
 -- Who is speaking to us?
 getNick :: [String] -> String
---getNick []         = []
---getNick a = (drop 1 (dropWhile (/= '!') (head a)))
 getNick = drop 1 . takeWhile (/= '!') . head
+
+-- Which channel is message coming from?  Also could be private message.
+getChannel :: [String] -> String
+getChannel a = a!!3
 
 -- Are we being spoken to?
 spokenTo :: [String] -> Bool
@@ -109,7 +108,10 @@ spokenTo a
     b = (head a)
 
 -- Is this a private message?
---spokenPrivate
+isPM :: [String] -> Bool
+isPM a
+    | getChannel a == nick = True
+    | otherwise            = False
 
 -- Figure shit out.
 eval :: [String] -> Net ()
@@ -117,10 +119,10 @@ eval a
     | length msg == 0         = return ()
     | spokenTo msg == True    = evalMsg1 who (tail msg)
     | otherwise               = evalMsg2 who msg
---    | otherwise               = return ()
   where
     msg = getMsg a
     who = getNick a
+    chan' = getChannel a
 
 -- Respond to message addressed to us.
 evalMsg1 :: String -> [String] -> ReaderT Bot IO ()
