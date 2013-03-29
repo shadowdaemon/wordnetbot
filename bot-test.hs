@@ -1,6 +1,6 @@
 import Data.List
 import Network
-import System.CPUTime
+--import System.CPUTime
 import System.IO
 import System.Exit
 import Control.Arrow
@@ -30,9 +30,6 @@ wnSearch2 a b c = io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> retur
 wnOverview :: String -> IO Overview
 wnOverview a = runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (getOverview a)
 
---fooTest1 :: String -> Net ()
---fooTest1 a = io (reverse a)
-
 wndir  = "/usr/share/wordnet/dict/"
 server = "irc.freenode.org"
 port   = 6667
@@ -44,7 +41,7 @@ owner  = "shadowdaemon"
 type Net = ReaderT Bot IO
 data Bot = Bot { socket :: Handle }
 
--- Set up actions to run on start and end, and run the main loop
+-- Set up actions to run on start and end, and run the main loop.
 main :: IO ()
 main = bracket connect disconnect loop
   where
@@ -55,7 +52,7 @@ main = bracket connect disconnect loop
 catchIOError :: IO a -> (IOError -> IO a) -> IO a
 catchIOError = catch
 
--- Connect to the server and return the initial bot state
+-- Connect to the server and return the initial bot state.
 connect :: IO Bot
 connect = notify $ do
     h <- connectTo server (PortNumber (fromIntegral port))
@@ -66,7 +63,7 @@ connect = notify $ do
         (printf "Connecting to %s ... " server >> hFlush stdout)
         (putStrLn "done.")
         a
- 
+
 -- We're in the Net monad now, so we've connected successfully.
 -- Join a channel, and start processing commands.
 run :: Net ()
@@ -81,32 +78,69 @@ listen :: Handle -> Net ()
 listen h = forever $ do
     s <- init `fmap` io (hGetLine h)
     io (putStrLn s)
-    if ping s then pong s else eval (getMsg (words s))
+    if ping s then pong s else eval (words s)
   where
     forever a = a >> forever a
     ping x    = "PING :" `isPrefixOf` x
     pong x    = write "PONG" (':' : drop 6 x)
 
+-- Get the actual message.
+getMsg :: [String] -> [String]
 getMsg a
     | length (intersect a ["PRIVMSG"]) > 0 = b
     | otherwise = []
   where
     b = (drop 1 (a!!3)) : (drop 4 a)
 
--- Dispatch a command.
+-- Are we being spoken to?
+spokenTo :: [String] -> Bool
+spokenTo []              = False
+spokenTo a
+    | b == nick          = True
+    | b == (nick ++ ":") = True
+    | otherwise          = False
+  where
+    b = (head a)
+
+--replyMsg
+
+-- Is our owner speaking to us?
+--spokenToOwner
+
+-- Is this a private message?
+--spokenPrivate
+
+--replyPrivate
+
+-- Figure shit out.
 eval :: [String] -> Net ()
-eval   []                           = return () -- Ignore because not channel message.
-eval   ["!quit"]                    = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
-eval x | "!id " `isPrefixOf` (x!!0) = privmsg (drop 4 (x!!0))
---eval   a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
---eval   a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
-eval   ["Jesus"]                    = privmsg "Jesus!"
-eval     a@_                        = privmsg $ reverse $ unwords a
+eval a
+    | length b == 0      = return ()
+    | spokenTo b == True = evalMsg $ tail b
+    | otherwise          = return ()
+  where
+    b = getMsg a
+
+-- Dispatch a command.
+evalMsg :: [String] -> ReaderT Bot IO ()
+evalMsg   []                           = return () -- Ignore because not PRIVMSG.
+evalMsg   ["!quit"]                    = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
+evalMsg x | "!id " `isPrefixOf` (x!!0) = chanMsg (drop 4 (x!!0))
+--evalMsg   a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
+--evalMsg   a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
+evalMsg   ["Jesus"]                    = chanMsg "Jesus!"
+evalMsg     a@_                        = chanMsg $ reverse $ unwords a
 
 -- Send a privmsg to the current chan + server.
-privmsg :: String -> Net ()
-privmsg s = write "PRIVMSG" (chan ++ " :" ++ s)
- 
+chanMsg :: String -> Net ()
+chanMsg s = write "PRIVMSG" (chan ++ " :" ++ s)
+
+replyMsg :: String -> String -> Net ()
+replyMsg s nick = write "PRIVMSG" (chan ++ " :" ++ s)
+
+privMsg :: String -> String -> Net ()
+privMsg s nick = write "PRIVMSG" (chan ++ " :" ++ s)
+
 -- Send a message out to the server we're currently connected to.
 write :: String -> String -> Net ()
 write s t = do

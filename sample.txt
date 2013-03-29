@@ -64,3 +64,14 @@
 > PRIVMSG #lolbots :Jesus!
 :shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :!quit
 > QUIT :Exiting
+
+:calvino.freenode.net 353 jesusbot = #lolbots :jesusbot @shadowdaemon snoopydog
+:calvino.freenode.net 366 jesusbot #lolbots :End of /NAMES list.
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :hello wtf man
+> PRIVMSG #lolbots :nam ftw olleh
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :jesusbot: hello wtf man
+> PRIVMSG #lolbots :nam ftw olleh :tobsusej
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG jesusbot :hello wtf man
+> PRIVMSG #lolbots :nam ftw olleh
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :!quit
+> QUIT :Exiting
