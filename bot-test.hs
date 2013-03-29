@@ -115,27 +115,35 @@ spokenTo a
 eval :: [String] -> Net ()
 eval a
     | length msg == 0         = return ()
-    | spokenTo msg == True    = evalMsg who (tail msg)
-    | otherwise               = return ()
+    | spokenTo msg == True    = evalMsg1 who (tail msg)
+    | otherwise               = evalMsg2 who msg
+--    | otherwise               = return ()
   where
     msg = getMsg a
     who = getNick a
 
--- Respond to message.
-evalMsg :: String -> [String] -> ReaderT Bot IO ()
-evalMsg _ []                               = return () -- Ignore because not PRIVMSG.
-evalMsg _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
---evalMsg _ a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
---evalMsg _ a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
-evalMsg a b | isPrefixOf "!" (head b)      = if a == owner then evalCmd b else return ()
-evalMsg a b                                = replyMsg a $ reverse $ unwords b
---evalMsg _ b                                = if length (intersect b ["jesus"]) > 0 || length (intersect b ["Jesus"]) > 0 then chanMsg "Jesus!" else return ()
+-- Respond to message addressed to us.
+evalMsg1 :: String -> [String] -> ReaderT Bot IO ()
+evalMsg1 _ []                               = return () -- Ignore because not PRIVMSG.
+evalMsg1 _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
+--evalMsg1 _ a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
+--evalMsg1 _ a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
+evalMsg1 a b | isPrefixOf "!" (head b)      = if a == owner then evalCmd b else return ()
+evalMsg1 a b                                = replyMsg a $ reverse $ unwords b
+
+-- Respond to message,
+evalMsg2 :: String -> [String] -> ReaderT Bot IO ()
+evalMsg2 _ []                               = return () -- Ignore because not PRIVMSG.
+evalMsg2 _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
+evalMsg2 _ ["lol"]                          = chanMsg "lol"
+evalMsg2 _ b                                = if length (intersect b ["jesus"]) > 0 || length (intersect b ["Jesus"]) > 0 then chanMsg "Jesus!" else return ()
+--evalMsg2 _ _                                = return ()
 
 -- Dispatch a command for owner.
 evalCmd :: [String] -> ReaderT Bot IO ()
 evalCmd (x:xs) | x == "!quit"              = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
 
--- Send a message to the current chan + server.
+-- Send a message to the channel.
 chanMsg :: String -> Net ()
 chanMsg s = write "PRIVMSG" (chan ++ " :" ++ s)
 
