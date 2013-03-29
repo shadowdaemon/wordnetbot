@@ -38,10 +38,17 @@ server = "irc.freenode.org"
 port   = 6667
 chan   = "#lolbots"
 nick   = "jesusbot"
+owner  = "shadowdaemon"
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
 data Bot = Bot { socket :: Handle }
+
+getMsg a
+    | length (intersect a ["PRIVMSG"]) > 0 = b
+    | otherwise = []
+  where
+    b = (drop 1 (a!!3)) : (drop 4 a)
 
 -- Set up actions to run on start and end, and run the main loop
 main :: IO ()
@@ -66,16 +73,16 @@ connect = notify $ do
         (putStrLn "done.")
         a
  
--- We're in the Net monad now, so we've connected successfully
--- Join a channel, and start processing commands
+-- We're in the Net monad now, so we've connected successfully.
+-- Join a channel, and start processing commands.
 run :: Net ()
 run = do
     write "NICK" nick
     write "USER" (nick++" 0 * :user")
     write "JOIN" chan
-    asks socket >>= listen
+    asks socket >>= listen2
  
--- Process each line from the server (this needs flood prevention somewhere)
+-- Process each line from the server (this needs flood prevention somewhere).
 listen :: Handle -> Net ()
 listen h = forever $ do
     s <- init `fmap` io (hGetLine h)
@@ -83,9 +90,16 @@ listen h = forever $ do
     if ping s then pong s else eval (clean s)
   where
     forever a = a >> forever a
-    --clean     = drop 1 . dropWhile (/= ':') . drop 1
-    --clean2 a  = drop 1 (dropWhile (/= ':') (drop 1 a))
-    --clean3 a  = drop 1 $ dropWhile (/= ':') $ drop 1 a
+    ping x    = "PING :" `isPrefixOf` x
+    pong x    = write "PONG" (':' : drop 6 x)
+
+listen2 :: Handle -> Net ()
+listen2 h = forever $ do
+    s <- init `fmap` io (hGetLine h)
+    io (putStrLn s)
+    if ping s then pong s else eval2 (getMsg (words s))
+  where
+    forever a = a >> forever a
     ping x    = "PING :" `isPrefixOf` x
     pong x    = write "PONG" (':' : drop 6 x)
 
@@ -94,23 +108,30 @@ clean a
     | length (intersect (words a) [chan]) > 0 = drop 1 $ dropWhile (/= ':') $ drop 1 a
     | otherwise = ""
 
--- Dispatch a command
+-- Dispatch a command.
 eval :: String -> Net ()
-eval     ""                    = return ()
+eval     ""                    = return () -- Ignore because not channel message.
 eval     "!quit"               = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
 eval x | "!id " `isPrefixOf` x = privmsg (drop 4 x)
 --eval   a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
 --eval   a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
-eval     "lol"                 = privmsg "lol"
 eval     "Jesus"               = privmsg "Jesus!"
 eval     a@_                   = privmsg $ reverse a
---eval     _                     = return () -- ignore everything else
 
--- Send a privmsg to the current chan + server
+eval2 :: [String] -> Net ()
+eval2   []                           = return () -- Ignore because not channel message.
+eval2   ["!quit"]                    = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
+eval2 x | "!id " `isPrefixOf` (x!!0) = privmsg (drop 4 (x!!0))
+--eval2   a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
+--eval2   a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
+eval2   ["Jesus"]                    = privmsg "Jesus!"
+eval2     a@_                        = privmsg $ reverse $ unwords a
+
+-- Send a privmsg to the current chan + server.
 privmsg :: String -> Net ()
 privmsg s = write "PRIVMSG" (chan ++ " :" ++ s)
  
--- Send a message out to the server we're currently connected to
+-- Send a message out to the server we're currently connected to.
 write :: String -> String -> Net ()
 write s t = do
     h <- asks socket
