@@ -92,6 +92,12 @@ getMsg a
   where
     b = (drop 1 (a!!3)) : (drop 4 a)
 
+-- Who is speaking to us?
+getNick :: [String] -> String
+--getNick []         = []
+--getNick a = (drop 1 (dropWhile (/= '!') (head a)))
+getNick = drop 1 . takeWhile (/= '!') . head
+
 -- Are we being spoken to?
 spokenTo :: [String] -> Bool
 spokenTo []              = False
@@ -102,44 +108,44 @@ spokenTo a
   where
     b = (head a)
 
---replyMsg
-
--- Is our owner speaking to us?
---spokenToOwner
-
 -- Is this a private message?
 --spokenPrivate
-
---replyPrivate
 
 -- Figure shit out.
 eval :: [String] -> Net ()
 eval a
-    | length b == 0      = return ()
-    | spokenTo b == True = evalMsg $ tail b
-    | otherwise          = return ()
+    | length msg == 0         = return ()
+    | spokenTo msg == True    = evalMsg who (tail msg)
+    | otherwise               = return ()
   where
-    b = getMsg a
+    msg = getMsg a
+    who = getNick a
 
--- Dispatch a command.
-evalMsg :: [String] -> ReaderT Bot IO ()
-evalMsg   []                           = return () -- Ignore because not PRIVMSG.
-evalMsg   ["!quit"]                    = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
-evalMsg x | "!id " `isPrefixOf` (x!!0) = chanMsg (drop 4 (x!!0))
---evalMsg   a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
---evalMsg   a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
-evalMsg   ["Jesus"]                    = chanMsg "Jesus!"
-evalMsg     a@_                        = chanMsg $ reverse $ unwords a
+-- Respond to message.
+evalMsg :: String -> [String] -> ReaderT Bot IO ()
+evalMsg _ []                               = return () -- Ignore because not PRIVMSG.
+evalMsg _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
+--evalMsg _ a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
+--evalMsg _ a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
+evalMsg a b | isPrefixOf "!" (head b)      = if a == owner then evalCmd b else return ()
+evalMsg a b                                = replyMsg a $ reverse $ unwords b
+--evalMsg _ b                                = if length (intersect b ["jesus"]) > 0 || length (intersect b ["Jesus"]) > 0 then chanMsg "Jesus!" else return ()
 
--- Send a privmsg to the current chan + server.
+-- Dispatch a command for owner.
+evalCmd :: [String] -> ReaderT Bot IO ()
+evalCmd (x:xs) | x == "!quit"              = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
+
+-- Send a message to the current chan + server.
 chanMsg :: String -> Net ()
 chanMsg s = write "PRIVMSG" (chan ++ " :" ++ s)
 
+-- Send a reply message.
 replyMsg :: String -> String -> Net ()
-replyMsg s nick = write "PRIVMSG" (chan ++ " :" ++ s)
+replyMsg rnick msg = write "PRIVMSG" (chan ++ " :" ++ rnick ++ ": " ++ msg)
 
+-- Send a private message.
 privMsg :: String -> String -> Net ()
-privMsg s nick = write "PRIVMSG" (chan ++ " :" ++ s)
+privMsg rnick msg = write "PRIVMSG" (rnick ++ " :" ++ msg)
 
 -- Send a message out to the server we're currently connected to.
 write :: String -> String -> Net ()
