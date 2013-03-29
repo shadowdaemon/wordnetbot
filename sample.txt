@@ -43,3 +43,24 @@
 :shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :hm a; a;afffdasfs
 :shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :!quit
 > QUIT :Exiting
+
+:niven.freenode.net 372 jesusbot :- ***************************************************************
+:niven.freenode.net 372 jesusbot :- Please read http://blog.freenode.net/2010/11/be-safe-out-there/
+:niven.freenode.net 372 jesusbot :- ***************************************************************
+:niven.freenode.net 376 jesusbot :End of /MOTD command.
+:jesusbot MODE jesusbot :+i
+:jesusbot!~jesusbot@203.111.138.234 JOIN #lolbots
+:niven.freenode.net 353 jesusbot = #lolbots :jesusbot @shadowdaemon snoopydog
+> PRIVMSG #lolbots :godypoons nomeadwodahs@ tobsusej
+:niven.freenode.net 366 jesusbot #lolbots :End of /NAMES list.
+> PRIVMSG #lolbots :.tsil SEMAN/ fo dnE
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :wtf
+> PRIVMSG #lolbots :ftw
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :lol
+> PRIVMSG #lolbots :lol
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :rofl
+> PRIVMSG #lolbots :lfor
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :Jesus
+> PRIVMSG #lolbots :Jesus!
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :!quit
+> QUIT :Exiting

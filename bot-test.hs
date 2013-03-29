@@ -84,22 +84,27 @@ listen h = forever $ do
   where
     forever a = a >> forever a
     --clean     = drop 1 . dropWhile (/= ':') . drop 1
+    --clean2 a  = drop 1 (dropWhile (/= ':') (drop 1 a))
+    --clean3 a  = drop 1 $ dropWhile (/= ':') $ drop 1 a
     ping x    = "PING :" `isPrefixOf` x
     pong x    = write "PONG" (':' : drop 6 x)
 
-clean a = clean' a where
-    clean' = drop 1 . dropWhile (/= ':') . drop 1
+clean :: String -> String
+clean a
+    | length (intersect (words a) [chan]) > 0 = drop 1 $ dropWhile (/= ':') $ drop 1 a
+    | otherwise = ""
 
 -- Dispatch a command
 eval :: String -> Net ()
+eval     ""                    = return ()
 eval     "!quit"               = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
 eval x | "!id " `isPrefixOf` x = privmsg (drop 4 x)
 --eval   a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
 --eval   a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
 eval     "lol"                 = privmsg "lol"
 eval     "Jesus"               = privmsg "Jesus!"
---eval     a@_                   = privmsg $ reverse a
-eval     _                     = return () -- ignore everything else
+eval     a@_                   = privmsg $ reverse a
+--eval     _                     = return () -- ignore everything else
 
 -- Send a privmsg to the current chan + server
 privmsg :: String -> Net ()
