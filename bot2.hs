@@ -10,9 +10,9 @@ import Prelude hiding (catch)
 
 server = "irc.freenode.org"
 port   = 6667
-chan   = "#anapnea"
+chan   = "#lolbots"
 nick   = "jesusbot"
-owner  = "kaepora"
+owner  = "shadowdaemon"
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
@@ -105,7 +105,7 @@ evalMsg1 _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
 evalMsg1 a b | isPrefixOf "!" (head b)      = if a == owner then evalCmd b else return ()
 evalMsg1 a b                                = replyMsg a $ reverse $ unwords b
 
--- Respond to message,
+-- Respond to message.
 evalMsg2 :: String -> [String] -> ReaderT Bot IO ()
 evalMsg2 _ []                               = return () -- Ignore because not PRIVMSG.
 evalMsg2 _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
