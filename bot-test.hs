@@ -1,5 +1,6 @@
 import Data.List
 import Network
+import System.CPUTime
 import System.IO
 import System.Exit
 import Control.Arrow
@@ -9,8 +10,30 @@ import Control.Exception
 import Text.Printf
 import Prelude hiding (catch)
 
-import NLP.Nerf
+--import NLP.Nerf
+import NLP.WordNet
 
+-- Test
+--foooo = NLP.Nerf.train 3 "foo" "bar" "baz"
+{-fooo :: IO WordNetEnv
+fooo = do
+    initializeWordNetWithOptions (wndir "/usr/share/wordnet/dict/") Nothing
+    runs $ searchByOverview (getOverview "dog") Noun AllSenses
+-}
+
+wnSearch1 :: String -> POS -> SenseType -> IO [SearchResult]
+wnSearch1 a b c = runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a b c)
+
+wnSearch2 :: String -> POS -> SenseType -> Net [SearchResult]
+wnSearch2 a b c = io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a b c)
+
+wnOverview :: String -> IO Overview
+wnOverview a = runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (getOverview a)
+
+--fooTest1 :: String -> Net ()
+--fooTest1 a = io (reverse a)
+
+wndir  = "/usr/share/wordnet/dict/"
 server = "irc.freenode.org"
 port   = 6667
 chan   = "#lolbots"
@@ -52,7 +75,7 @@ run = do
     write "JOIN" chan
     asks socket >>= listen
  
--- Process each line from the server
+-- Process each line from the server (this needs flood prevention somewhere)
 listen :: Handle -> Net ()
 listen h = forever $ do
     s <- init `fmap` io (hGetLine h)
@@ -60,16 +83,22 @@ listen h = forever $ do
     if ping s then pong s else eval (clean s)
   where
     forever a = a >> forever a
-    clean     = drop 1 . dropWhile (/= ':') . drop 1
+    --clean     = drop 1 . dropWhile (/= ':') . drop 1
     ping x    = "PING :" `isPrefixOf` x
     pong x    = write "PONG" (':' : drop 6 x)
- 
+
+clean a = clean' a where
+    clean' = drop 1 . dropWhile (/= ':') . drop 1
+
 -- Dispatch a command
 eval :: String -> Net ()
 eval     "!quit"               = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
 eval x | "!id " `isPrefixOf` x = privmsg (drop 4 x)
+--eval   a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
+--eval   a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
 eval     "lol"                 = privmsg "lol"
 eval     "Jesus"               = privmsg "Jesus!"
+--eval     a@_                   = privmsg $ reverse a
 eval     _                     = return () -- ignore everything else
 
 -- Send a privmsg to the current chan + server
@@ -86,3 +115,8 @@ write s t = do
 -- Convenience.
 io :: IO a -> Net a
 io = liftIO
+
+tryDir :: FilePath -> Maybe FilePath
+tryDir a
+    | length a > 0 = Just a
+    | otherwise    = Nothing

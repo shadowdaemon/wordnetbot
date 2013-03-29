@@ -1,0 +1,45 @@
+:rajaniemi.freenode.net 372 jesusbot :-
+> PRIVMSG #lolbots :  -
+:rajaniemi.freenode.net 372 jesusbot :- Check out www.fossevents.org to find out what is happening in
+> PRIVMSG #lolbots :ni gnineppah si tahw tuo dnif ot gro.stnevessof.www tuo kcehC -
+:rajaniemi.freenode.net 372 jesusbot :- your area, join us at FOSSCON (www.fosscon.org) for talks and
+> PRIVMSG #lolbots :dna sklat rof )gro.nocssof.www( NOCSSOF ta su nioj ,aera ruoy -
+:rajaniemi.freenode.net 372 jesusbot :- real-life collaboration or bring a picnic and come join
+> PRIVMSG #lolbots :nioj emoc dna cincip a gnirb ro noitaroballoc efil-laer -
+:rajaniemi.freenode.net 372 jesusbot :- like-minded geeks for a geeknic (www.geeknic.org) somewhere
+> PRIVMSG #lolbots :erehwemos )gro.cinkeeg.www( cinkeeg a rof skeeg dednim-ekil -
+:rajaniemi.freenode.net 372 jesusbot :- close to you.
+> PRIVMSG #lolbots : .uoy ot esolc -
+:rajaniemi.freenode.net 372 jesusbot :- Lastly, massive thanks to the OSU Open Source Lab
+> PRIVMSG #lolbots :baL ecruoS nepO USO eht ot sknaht evissam ,yltsaL -
+:rajaniemi.freenode.net 372 jesusbot :- (http://osuosl.org/) and Private Internet Access
+> PRIVMSG #lolbots :sseccA tenretnI etavirP dna )/gro.lsouso//:ptth( -
+:rajaniemi.freenode.net 372 jesusbot :- (https://www.privateinternetaccess.com/) for their sustained,
+> PRIVMSG #lolbots :,deniatsus rieht rof )/moc.sseccatenretnietavirp.www//:sptth( -
+:rajaniemi.freenode.net 372 jesusbot :- long term support and dedication they show to the FOSS
+> PRIVMSG #lolbots :SSOF eht ot wohs yeht noitacided dna troppus mret gnol -
+:rajaniemi.freenode.net 372 jesusbot :- communities.
+> PRIVMSG #lolbots :.seitinummoc -
+:rajaniemi.freenode.net 372 jesusbot :-
+> PRIVMSG #lolbots :  -
+:rajaniemi.freenode.net 372 jesusbot :- ***************************************************************
+> PRIVMSG #lolbots :*************************************************************** -
+:rajaniemi.freenode.net 372 jesusbot :- Please read http://blog.freenode.net/2010/11/be-safe-out-there/
+> PRIVMSG #lolbots :/ereht-tuo-efas-eb/11/0102/ten.edoneerf.golb//:ptth daer esaelP -
+:rajaniemi.freenode.net 372 jesusbot :- ***************************************************************
+> PRIVMSG #lolbots :*************************************************************** -
+:rajaniemi.freenode.net 376 jesusbot :End of /MOTD command.
+> PRIVMSG #lolbots :.dnammoc DTOM/ fo dnE
+:jesusbot MODE jesusbot :+i
+> PRIVMSG #lolbots :i+
+:jesusbot!~jesusbot@203.111.138.234 QUIT :Excess Flood
+
+:jesusbot MODE jesusbot :+i
+:jesusbot!~jesusbot@203.111.138.234 JOIN #lolbots
+:hubbard.freenode.net 353 jesusbot = #lolbots :jesusbot @shadowdaemon snoopydog
+:hubbard.freenode.net 366 jesusbot #lolbots :End of /NAMES list.
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :lol
+> PRIVMSG #lolbots :lol
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :hm a; a;afffdasfs
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :!quit
+> QUIT :Exiting
