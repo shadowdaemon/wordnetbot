@@ -15,7 +15,7 @@ import NLP.WordNet
 wndir  = "/usr/share/wordnet/dict/"
 server = "irc.freenode.org"
 port   = 6667
-chan   = "#anapnea"
+chan   = "#lolbots"
 nick   = "wordnetbot"
 owner  = "shadowdaemon"
 
@@ -71,7 +71,6 @@ listen h = forever $ do
 -- Get the actual message.
 getMsg :: [String] -> [String]
 getMsg a
---    | a!!1 == ["PRIVMSG"] = (drop 1 (a!!3)) : (drop 4 a)
     | (head $ drop 1 a) == "PRIVMSG" = (drop 1 (a!!3)) : (drop 4 a)
     | otherwise = []
 
@@ -81,7 +80,9 @@ getNick = drop 1 . takeWhile (/= '!') . head
 
 -- Which channel is message coming from?  Also could be private message.
 getChannel :: [String] -> String
-getChannel a = a!!3
+getChannel a
+    | length a > 2 = a!!2
+    | otherwise    = []
 
 -- Are we being spoken to?
 spokenTo :: [String] -> Bool
@@ -99,36 +100,36 @@ isPM a
     | getChannel a == nick = True
     | otherwise            = False
 
--- Figure shit out.
+-- Figure out how to respond.
 eval :: [String] -> Net ()
 eval a
-    | length msg == 0         = return ()
-    | spokenTo msg == True    = evalMsg1 who (tail msg)
+    | length msg == 0         = return () -- Need a central location to check message length to prevent array exceptions.
+    | spokenTo msg            = evalMsg1 who (tail msg)
+--    | isPM a                  = evalMsg1 who msg
     | otherwise               = evalMsg2 who msg
   where
     msg = getMsg a
     who = getNick a
-    chan' = getChannel a
+--    chan' = getChannel a
 
 -- Respond to message addressed to us.
 evalMsg1 :: String -> [String] -> ReaderT Bot IO ()
-evalMsg1 _ []                               = return () -- Ignore because not PRIVMSG.
-evalMsg1 _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
+evalMsg1 _ []                                = return () -- Ignore because not PRIVMSG.
+evalMsg1 _ b | isPrefixOf "!id " (head b)    = chanMsg (drop 4 (head b))
 evalMsg1 a b | isPrefixOf "!search" (head b) = wnSearch (head $ tail b)
-evalMsg1 a b | isPrefixOf "!" (head b)      = if a == owner then evalCmd b else return () -- Evaluate owner commands.
-evalMsg1 a b                                = replyMsg a $ reverse $ unwords b -- Cheesy reverse gimmick.
+evalMsg1 a b | isPrefixOf "!" (head b)       = if a == owner then evalCmd b else return () -- Evaluate owner commands.
+evalMsg1 a b                                 = replyMsg a $ reverse $ unwords b -- Cheesy reverse gimmick.
 
 -- Respond to message.
 evalMsg2 :: String -> [String] -> ReaderT Bot IO ()
-evalMsg2 _ []                               = return () -- Ignore because not PRIVMSG.
-evalMsg2 _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
-evalMsg2 _ ["lol"]                          = chanMsg "lol"
-evalMsg2 _ b                                = if length (intersect b ["jesus"]) > 0 || length (intersect b ["Jesus"]) > 0 then chanMsg "Jesus!" else return ()
---evalMsg2 _ _                                = return ()
+evalMsg2 _ []                                = return () -- Ignore because not PRIVMSG.
+evalMsg2 _ b | isPrefixOf "!id " (head b)    = chanMsg (drop 4 (head b))
+evalMsg2 _ ["lol"]                           = chanMsg "lol"
+evalMsg2 _ b                                 = if length (intersect b ["jesus"]) > 0 || length (intersect b ["Jesus"]) > 0 then chanMsg "Jesus!" else return ()
 
 -- Evaluate commands for owner.
 evalCmd :: [String] -> ReaderT Bot IO ()
-evalCmd (x:xs) | x == "!quit"               = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
+evalCmd (x:xs) | x == "!quit"                = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
 
 -- Send a message to the channel.
 chanMsg :: String -> Net ()
@@ -170,8 +171,10 @@ wnSearch a = do
     io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
 
+{-
 wnSearch2 :: String -> POS -> SenseType -> Net [SearchResult]
 wnSearch2 a b c = io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a b c)
 
 wnOverview :: String -> IO Overview
 wnOverview a = runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (getOverview a)
+-}
