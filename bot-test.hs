@@ -12,33 +12,17 @@ import Prelude hiding (catch)
 --import NLP.Nerf
 import NLP.WordNet
 
--- Test
-{-
-fooo :: IO WordNetEnv
-fooo = do
-    initializeWordNetWithOptions (wndir "/usr/share/wordnet/dict/") Nothing
-    runs $ searchByOverview (getOverview "dog") Noun AllSenses
--}
-
-wnSearch1 :: String -> POS -> SenseType -> IO [SearchResult]
-wnSearch1 a b c = runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a b c)
-
-wnSearch2 :: String -> POS -> SenseType -> Net [SearchResult]
-wnSearch2 a b c = io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a b c)
-
-wnOverview :: String -> IO Overview
-wnOverview a = runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (getOverview a)
-
 wndir  = "/usr/share/wordnet/dict/"
 server = "irc.freenode.org"
 port   = 6667
-chan   = "#lolbots"
-nick   = "jesusbot"
+chan   = "#anapnea"
+nick   = "wordnetbot"
 owner  = "shadowdaemon"
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
 data Bot = Bot { socket :: Handle }
+--data Bot = Bot { socket :: Handle, wne :: WordNetEnv }
 
 -- Set up actions to run on start and end, and run the main loop.
 main :: IO ()
@@ -54,7 +38,9 @@ catchIOError = catch
 connect :: IO Bot
 connect = notify $ do
     h <- connectTo server (PortNumber (fromIntegral port))
+    --w <- initializeWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ()))
     hSetBuffering h NoBuffering
+    --return (Bot h w)
     return (Bot h)
   where
     notify a = bracket_
@@ -128,12 +114,11 @@ eval a
 evalMsg1 :: String -> [String] -> ReaderT Bot IO ()
 evalMsg1 _ []                               = return () -- Ignore because not PRIVMSG.
 evalMsg1 _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
---evalMsg1 _ a@"!wnSearch"           = privmsg (wnSearch2 "hag" Noun AllSenses)
---evalMsg1 _ a@"!wnSearch"           = wnSearch2 "hag" Noun AllSenses >>= privmsg
-evalMsg1 a b | isPrefixOf "!" (head b)      = if a == owner then evalCmd b else return ()
-evalMsg1 a b                                = replyMsg a $ reverse $ unwords b
+evalMsg1 a b | isPrefixOf "!search" (head b) = wnSearch (head $ tail b)
+evalMsg1 a b | isPrefixOf "!" (head b)      = if a == owner then evalCmd b else return () -- Evaluate owner commands.
+evalMsg1 a b                                = replyMsg a $ reverse $ unwords b -- Cheesy reverse gimmick.
 
--- Respond to message,
+-- Respond to message.
 evalMsg2 :: String -> [String] -> ReaderT Bot IO ()
 evalMsg2 _ []                               = return () -- Ignore because not PRIVMSG.
 evalMsg2 _ b | isPrefixOf "!id " (head b)   = chanMsg (drop 4 (head b))
@@ -141,9 +126,9 @@ evalMsg2 _ ["lol"]                          = chanMsg "lol"
 evalMsg2 _ b                                = if length (intersect b ["jesus"]) > 0 || length (intersect b ["Jesus"]) > 0 then chanMsg "Jesus!" else return ()
 --evalMsg2 _ _                                = return ()
 
--- Dispatch a command for owner.
+-- Evaluate commands for owner.
 evalCmd :: [String] -> ReaderT Bot IO ()
-evalCmd (x:xs) | x == "!quit"              = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
+evalCmd (x:xs) | x == "!quit"               = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
 
 -- Send a message to the channel.
 chanMsg :: String -> Net ()
@@ -172,3 +157,21 @@ tryDir :: FilePath -> Maybe FilePath
 tryDir a
     | length a > 0 = Just a
     | otherwise    = Nothing
+
+--wnSearch :: String -> POS -> SenseType -> IO [SearchResult]
+wnSearch a = do
+    h <- asks socket
+    result1 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Noun AllSenses)
+    result2 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Verb AllSenses)
+    result3 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Adj AllSenses)
+    result4 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Adv AllSenses)
+    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+
+wnSearch2 :: String -> POS -> SenseType -> Net [SearchResult]
+wnSearch2 a b c = io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a b c)
+
+wnOverview :: String -> IO Overview
+wnOverview a = runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (getOverview a)
