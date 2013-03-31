@@ -125,7 +125,8 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy rev
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> ReaderT Bot IO ()
 evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd _ _ (x:xs) | x == "!search"     = wnSearch (head xs)    
+evalCmd _ _ (x:xs) | x == "!search"     = wnSearch (head xs)
+evalCmd _ _ (x:xs) | x == "!overview"   = wnOverview (head xs)
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -164,6 +165,11 @@ wnSearch a = do
     io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
 
+wnOverview a = do
+    h <- asks socket
+    w <- asks wne
+    result <- io $ return $ runs w (getOverview a)
+    io $ hPrintf h "PRIVMSG %s :" chan; io $ hPrint h result; io $ hPrintf h "\r\n"
 
 {-
 tryDir :: FilePath -> Maybe FilePath
