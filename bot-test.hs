@@ -13,6 +13,7 @@ import Prelude
 
 --import NLP.Nerf
 import NLP.WordNet
+import NLP.WordNet.Prims (getIndexString, indexLookup, indexToSenseKey, getSynsetForSense)
 
 wndir  = "/usr/share/wordnet/dict/"
 server = "irc.freenode.org"
@@ -127,6 +128,7 @@ evalCmd :: String -> String -> [String] -> ReaderT Bot IO ()
 evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
 evalCmd _ _ (x:xs) | x == "!search"     = wnSearch (head xs)
 evalCmd _ _ (x:xs) | x == "!overview"   = wnOverview (head xs)
+evalCmd _ _ (x:xs) | x == "!type"       = wnWordType (head xs)
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -170,6 +172,20 @@ wnOverview a = do
     w <- asks wne
     result <- io $ return $ runs w (getOverview a)
     io $ hPrintf h "PRIVMSG %s :" chan; io $ hPrint h result; io $ hPrintf h "\r\n"
+
+wnWordType a = do
+    h <- asks socket
+    w <- asks wne
+    result1 <- io $ (getIndexString w a Noun)
+    result2 <- io $ (getIndexString w a Verb)
+    result3 <- io $ (getIndexString w a Adj)
+    result4 <- io $ (getIndexString w a Adv)
+    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+
+--wnSenseKey a = do
 
 {-
 tryDir :: FilePath -> Maybe FilePath
