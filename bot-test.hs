@@ -3,13 +3,13 @@ import Network
 --import System.CPUTime
 import System.Directory
 import System.IO
-import System.IO.Error -- (isDoesNotExistError)
+import System.IO.Error
 import System.Exit
 import Control.Arrow
 import Control.Monad.Reader
 import Control.Exception
 import Text.Printf
-import Prelude hiding (catch)
+import Prelude
 
 --import NLP.Nerf
 import NLP.WordNet
@@ -29,7 +29,7 @@ data Bot = Bot { socket :: Handle, wne :: WordNetEnv }
 main :: IO ()
 main = bracket connect disconnect loop
   where
-    disconnect = hClose . socket
+    disconnect = do hClose . socket ; closeWordNet . wne
     loop st    = catchIOError (runReaderT run st) (const $ return ())
 
 -- Connect to the server and return the initial bot state.  Initialize WordNet.
