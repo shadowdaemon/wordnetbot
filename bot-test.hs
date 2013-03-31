@@ -1,7 +1,9 @@
 import Data.List
 import Network
 --import System.CPUTime
+import System.Directory
 import System.IO
+import System.IO.Error -- (isDoesNotExistError)
 import System.Exit
 import Control.Arrow
 import Control.Monad.Reader
@@ -31,14 +33,15 @@ main = bracket connect disconnect loop
     disconnect = hClose . socket
     loop st    = catchIOError (runReaderT run st) (const $ return ())
 
-catchIOError :: IO a -> (IOError -> IO a) -> IO a
-catchIOError = catch
+-- This is from System.IO.Error ...
+--catchIOError :: IO a -> (IOError -> IO a) -> IO a
+--catchIOError = catch
 
 -- Connect to the server and return the initial bot state.
 connect :: IO Bot
 connect = notify $ do
     h <- connectTo server (PortNumber (fromIntegral port))
-    --w <- initializeWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ()))
+    w <- initializeWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ()))
     hSetBuffering h NoBuffering
     --return (Bot h w)
     return (Bot h)
@@ -62,7 +65,7 @@ listen :: Handle -> Net ()
 listen h = forever $ do
     s <- init `fmap` io (hGetLine h)
     io (putStrLn s)
-    if ping s then pong s else eval (words s)
+    if ping s then pong s else processLine (words s)
   where
     forever a = a >> forever a
     ping x    = "PING :" `isPrefixOf` x
@@ -79,10 +82,14 @@ getNick :: [String] -> String
 getNick = drop 1 . takeWhile (/= '!') . head
 
 -- Which channel is message coming from?  Also could be private message.
+{-
 getChannel :: [String] -> String
 getChannel a
     | length a > 2 = a!!2
     | otherwise    = []
+-}
+getChannel :: [String] -> String
+getChannel = head . drop 2
 
 -- Are we being spoken to?
 spokenTo :: [String] -> Bool
@@ -100,48 +107,49 @@ isPM a
     | getChannel a == nick = True
     | otherwise            = False
 
--- Figure out how to respond.
-eval :: [String] -> Net ()
-eval a
-    | length msg == 0         = return () -- Need a central location to check message length to prevent array exceptions.
-    | spokenTo msg            = evalMsg1 who (tail msg)
---    | isPM a                  = evalMsg1 who msg
-    | otherwise               = evalMsg2 who msg
+-- Process IRC line.
+processLine :: [String] -> Net ()
+processLine a
+    | length a == 0     = return ()
+    | length msg' == 0  = return () -- Ignore because not PRIVMSG.
+    | chan' == nick     = if (head $ head msg') == '!' then evalCmd chan' who' msg' -- Evaluate command.
+                          else reply [] who' msg' -- Respond to PM.
+    | spokenTo msg'     = if (head $ head $ tail msg') == '!' then evalCmd chan' who' (tail msg') -- Evaluate command.
+                          else reply chan' who' (tail msg') -- Respond upon being addressed.
+--    | otherwise         = processMsg chan' who' msg' -- Process message.
+    | otherwise         = reply chan' [] msg' -- Testing.
   where
-    msg = getMsg a
-    who = getNick a
---    chan' = getChannel a
+    msg' = getMsg a
+    who' = getNick a
+    chan' = getChannel a
 
--- Respond to message addressed to us.
-evalMsg1 :: String -> [String] -> ReaderT Bot IO ()
-evalMsg1 _ []                                = return () -- Ignore because not PRIVMSG.
-evalMsg1 _ b | isPrefixOf "!id " (head b)    = chanMsg (drop 4 (head b))
-evalMsg1 a b | isPrefixOf "!search" (head b) = wnSearch (head $ tail b)
-evalMsg1 a b | isPrefixOf "!" (head b)       = if a == owner then evalCmd b else return () -- Evaluate owner commands.
-evalMsg1 a b                                 = replyMsg a $ reverse $ unwords b -- Cheesy reverse gimmick.
+-- Reply to message.
+reply :: String -> String -> [String] -> ReaderT Bot IO ()
+reply [] who' msg = privMsg who' $ reverse $ unwords msg
+reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg
+reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.
 
--- Respond to message.
-evalMsg2 :: String -> [String] -> ReaderT Bot IO ()
-evalMsg2 _ []                                = return () -- Ignore because not PRIVMSG.
-evalMsg2 _ b | isPrefixOf "!id " (head b)    = chanMsg (drop 4 (head b))
-evalMsg2 _ ["lol"]                           = chanMsg "lol"
-evalMsg2 _ b                                 = if length (intersect b ["jesus"]) > 0 || length (intersect b ["Jesus"]) > 0 then chanMsg "Jesus!" else return ()
+-- Process messages.
+--processMsg :: String -> String -> [String] -> ReaderT Bot IO ()
+--processMsg chan' who' msg' =
 
--- Evaluate commands for owner.
-evalCmd :: [String] -> ReaderT Bot IO ()
-evalCmd (x:xs) | x == "!quit"                = write "QUIT" ":Exiting" >> io (exitWith ExitSuccess)
+-- Evaluate commands.
+evalCmd :: String -> String -> [String] -> ReaderT Bot IO ()
+evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
+evalCmd _ _ (x:xs) | x == "!search"     = wnSearch (head xs)    
+evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
-chanMsg :: String -> Net ()
-chanMsg s = write "PRIVMSG" (chan ++ " :" ++ s)
+chanMsg :: String -> String -> Net ()
+chanMsg chan' msg = write "PRIVMSG" (chan' ++ " :" ++ msg)
 
 -- Send a reply message.
-replyMsg :: String -> String -> Net ()
-replyMsg rnick msg = write "PRIVMSG" (chan ++ " :" ++ rnick ++ ": " ++ msg)
+replyMsg :: String -> String -> String -> Net ()
+replyMsg chan' nick' msg = write "PRIVMSG" (chan' ++ " :" ++ nick' ++ ": " ++ msg)
 
 -- Send a private message.
 privMsg :: String -> String -> Net ()
-privMsg rnick msg = write "PRIVMSG" (rnick ++ " :" ++ msg)
+privMsg nick' msg = write "PRIVMSG" (nick' ++ " :" ++ msg)
 
 -- Send a message out to the server we're currently connected to.
 write :: String -> String -> Net ()
@@ -159,10 +167,16 @@ tryDir a
     | length a > 0 = Just a
     | otherwise    = Nothing
 
---wnSearch :: String -> POS -> SenseType -> IO [SearchResult]
+tryDir2 :: FilePath -> IO (Maybe FilePath)
+tryDir2 a = do
+    dir <- doesDirectoryExist a
+--    if dir then do return (Just a) else do return (Nothing)
+    do if dir then return (Just a) else return (Nothing)
+
+wnSearch :: String -> ReaderT Bot IO b
 wnSearch a = do
     h <- asks socket
-    result1 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Noun AllSenses)
+    result1 <- io $ runWordNetWithOptions (return wndir :: Maybe FilePath) (Just (\_ _ -> return ())) (search a Noun AllSenses)
     result2 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Verb AllSenses)
     result3 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Adj AllSenses)
     result4 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Adv AllSenses)
@@ -172,8 +186,10 @@ wnSearch a = do
     io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
 
 {-
-wnSearch2 :: String -> POS -> SenseType -> Net [SearchResult]
-wnSearch2 a b c = io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a b c)
+tryIOError :: IO a -> IO (Either IOError a)
+tryIOError = try
+
+return "WHAT" :: Maybe String
 
 wnOverview :: String -> IO Overview
 wnOverview a = runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (getOverview a)
