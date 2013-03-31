@@ -32,7 +32,7 @@ main = bracket connect disconnect loop
     disconnect = hClose . socket
     loop st    = catchIOError (runReaderT run st) (const $ return ())
 
--- Connect to the server and return the initial bot state.
+-- Connect to the server and return the initial bot state.  Initialize WordNet.
 connect :: IO Bot
 connect = notify $ do
     h <- connectTo server (PortNumber (fromIntegral port))
@@ -77,12 +77,6 @@ getNick :: [String] -> String
 getNick = drop 1 . takeWhile (/= '!') . head
 
 -- Which channel is message coming from?  Also could be private message.
-{-
-getChannel :: [String] -> String
-getChannel a
-    | length a > 2 = a!!2
-    | otherwise    = []
--}
 getChannel :: [String] -> String
 getChannel = head . drop 2
 
@@ -157,6 +151,21 @@ write s t = do
 io :: IO a -> Net a
 io = liftIO
 
+wnSearch :: String -> ReaderT Bot IO b
+wnSearch a = do
+    h <- asks socket
+    w <- asks wne
+    result1 <- io $ return $ runs w (search a Noun AllSenses)
+    result2 <- io $ return $ runs w (search a Verb AllSenses)
+    result3 <- io $ return $ runs w (search a Adj AllSenses)
+    result4 <- io $ return $ runs w (search a Adv AllSenses)
+    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+
+
+{-
 tryDir :: FilePath -> Maybe FilePath
 tryDir a
     | length a > 0 = Just a
@@ -167,20 +176,18 @@ tryDir2 a = do
     dir <- doesDirectoryExist a
 --    if dir then do return (Just a) else do return (Nothing)
     do if dir then return (Just a) else return (Nothing)
+--tryDir3 a = do b <- tryDir2 a ; return b
 
-wnSearch :: String -> ReaderT Bot IO b
-wnSearch a = do
-    h <- asks socket
-    result1 <- io $ runWordNetWithOptions (return wndir :: Maybe FilePath) (Just (\_ _ -> return ())) (search a Noun AllSenses)
-    result2 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Verb AllSenses)
-    result3 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Adj AllSenses)
-    result4 <- io $ runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (search a Adv AllSenses)
-    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+foo a = do
+    w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath)
+      (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
+    return $ runs w (search a Noun AllSenses)
 
-{-
+foo2 :: String -> ReaderT Bot IO [SearchResult]
+foo2 a = do
+    w <- asks wne
+    return $ runs w (search a Noun AllSenses)
+
 tryIOError :: IO a -> IO (Either IOError a)
 tryIOError = try
 
