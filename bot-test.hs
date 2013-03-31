@@ -23,8 +23,7 @@ owner  = "shadowdaemon"
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
-data Bot = Bot { socket :: Handle }
---data Bot = Bot { socket :: Handle, wne :: WordNetEnv }
+data Bot = Bot { socket :: Handle, wne :: WordNetEnv }
 
 -- Set up actions to run on start and end, and run the main loop.
 main :: IO ()
@@ -33,18 +32,14 @@ main = bracket connect disconnect loop
     disconnect = hClose . socket
     loop st    = catchIOError (runReaderT run st) (const $ return ())
 
--- This is from System.IO.Error ...
---catchIOError :: IO a -> (IOError -> IO a) -> IO a
---catchIOError = catch
-
 -- Connect to the server and return the initial bot state.
 connect :: IO Bot
 connect = notify $ do
     h <- connectTo server (PortNumber (fromIntegral port))
-    w <- initializeWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ()))
+    w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath) 
+      (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
     hSetBuffering h NoBuffering
-    --return (Bot h w)
-    return (Bot h)
+    return (Bot h w)
   where
     notify a = bracket_
         (printf "Connecting to %s ... " server >> hFlush stdout)
