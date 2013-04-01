@@ -22,7 +22,8 @@ module NLP.WordNet.Prims
      getSynsetForSense,
      readSynset,
      indexToSenseKey,
-     indexLookup
+     indexLookup,
+     senseCount
     )
     where
 
@@ -307,3 +308,6 @@ binarySearch h s = do
       if eof 
         then return ()
         else do hGetLine h; return ()
+
+senseCount :: Index -> Int
+senseCount (Index _ _ indexSenseCount _ _ _) = indexSenseCount

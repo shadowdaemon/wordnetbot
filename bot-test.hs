@@ -1,4 +1,5 @@
 import Data.List
+import Data.Maybe
 import Network
 --import System.CPUTime
 import System.Directory
@@ -13,7 +14,8 @@ import Prelude
 
 --import NLP.Nerf
 import NLP.WordNet
-import NLP.WordNet.Prims (getIndexString, indexLookup, indexToSenseKey, getSynsetForSense)
+import NLP.WordNet.Prims (getIndexString, indexLookup, indexToSenseKey, getSynsetForSense, senseCount)
+import NLP.WordNet.PrimTypes
 
 wndir  = "/usr/share/wordnet/dict/"
 server = "irc.freenode.org"
@@ -114,7 +116,7 @@ processLine a
     chan' = getChannel a
 
 -- Reply to message.
-reply :: String -> String -> [String] -> ReaderT Bot IO ()
+reply :: String -> String -> [String] -> Net ()
 reply [] who' msg = privMsg who' $ reverse $ unwords msg
 reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg
 reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.
@@ -124,7 +126,7 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy rev
 --processMsg chan' who' msg' =
 
 -- Evaluate commands.
-evalCmd :: String -> String -> [String] -> ReaderT Bot IO ()
+evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
 evalCmd _ _ (x:xs) | x == "!search"     = wnSearch (head xs)
 evalCmd _ _ (x:xs) | x == "!overview"   = wnOverview (head xs)
@@ -154,7 +156,7 @@ write s t = do
 io :: IO a -> Net a
 io = liftIO
 
-wnSearch :: String -> ReaderT Bot IO b
+wnSearch :: String -> Net b
 wnSearch a = do
     h <- asks socket
     w <- asks wne
@@ -167,12 +169,14 @@ wnSearch a = do
     io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
 
+wnOverview :: String -> Net b
 wnOverview a = do
     h <- asks socket
     w <- asks wne
     result <- io $ return $ runs w (getOverview a)
     io $ hPrintf h "PRIVMSG %s :" chan; io $ hPrint h result; io $ hPrintf h "\r\n"
 
+wnWordType :: String -> Net b
 wnWordType a = do
     h <- asks socket
     w <- asks wne
@@ -185,7 +189,25 @@ wnWordType a = do
     io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
 
---wnSenseKey a = do
+wnType :: String -> Net String
+wnType a = do
+    w <- asks wne
+    ind1 <- io $ indexLookup w a Noun
+    ind2 <- io $ indexLookup w a Verb
+    ind3 <- io $ indexLookup w a Adj
+    ind4 <- io $ indexLookup w a Adv
+    return (type' ((count' ind1) : (count' ind2) : (count' ind3) : (count' ind4) : []))
+  where
+    count' a = if isJust a then senseCount (fromJust a) else 0
+    type' [] = "Other"
+    type' a
+      | fromJust (elemIndex (maximum a) a) == 0 = "Noun"
+      | fromJust (elemIndex (maximum a) a) == 1 = "Verb"
+      | fromJust (elemIndex (maximum a) a) == 2 = "Adj"
+      | fromJust (elemIndex (maximum a) a) == 3 = "Adv"
+      | otherwise                               = "Other"
+
+--foo a = wnType $ wnSenseCount a
 
 {-
 tryDir :: FilePath -> Maybe FilePath
