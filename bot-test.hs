@@ -10,6 +10,7 @@ import Control.Arrow
 import Control.Monad.Reader
 import Control.Exception
 import Text.Printf
+--import Text.Regex.TDFA
 import Prelude
 
 --import NLP.Nerf
@@ -132,7 +133,7 @@ evalCmd _ _ (x:xs) | x == "!search"     = wnSearchTest2 (head xs)
 evalCmd _ _ (x:xs) | x == "!hypernym"   = wnSearchHypernymTest1 (head xs)
 evalCmd _ _ (x:xs) | x == "!overview"   = wnOverviewTest (head xs)
 evalCmd _ _ (x:xs) | x == "!type"       = wnWordTypeTest (head xs)
-evalCmd _ _ (x:xs) | x == "!words"      = wnGetWordsTest1 (head xs)
+evalCmd a b (x:xs) | x == "!words"      = wnGetWordsTest3 (head xs) >>= replyMsg a b
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -153,7 +154,7 @@ write s t = do
     h <- asks socket
     io $ hPrintf h "%s %s\r\n" s t
     io $ printf    "> %s %s\n" s t
- 
+
 -- Convenience.
 io :: IO a -> Net a
 io = liftIO
@@ -198,12 +199,18 @@ wnTypePOS a = do
 {- TESTING -}
 
 
+-- wnReplaceTest1 :: String -> String
+-- wnReplaceTest1 a = do
+--     w <- asks wne
+--     wnPos <- wnTypePOS a
+
+
 -- Needs "MonadReader Bot" instance
 --instance MonadReader Bot [] where
 --    ReaderT socket = False
-wnSearch :: MonadReader Bot m => String -> m [SearchResult]
---wnSearch :: Monad m => String -> WordNetEnv -> m [SearchResult]
-wnSearch a = do
+wnSearchTest3 :: MonadReader Bot m => String -> m [SearchResult]
+--wnSearchTest3 :: Monad m => String -> WordNetEnv -> m [SearchResult]
+wnSearchTest3 a = do
     w <- asks wne
     return $ runs w (search a Noun AllSenses)
     return $ runs w (search a Verb AllSenses)
@@ -237,6 +244,20 @@ wnGetWordsTest1 a = do
     wnPos <- wnTypePOS a
     result <- io $ return $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))
     io $ printf "PRIVMSG %s :" chan; io $ print result; io $ printf "\r\n"
+
+wnGetWordsTest2 a = do
+    h <- asks socket
+    w <- asks wne
+    wnPos <- wnTypePOS a
+    result <- io $ return $ (nub $ concat $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))) \\ (a : [])
+    io $ printf "PRIVMSG %s :Words -> " chan; io $ print result; io $ printf "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Words -> " chan; io $ hPrint h result; io $ hPrintf h "\r\n"
+
+wnGetWordsTest3 :: String -> Net String
+wnGetWordsTest3 a = do
+    w <- asks wne
+    wnPos <- wnTypePOS a
+    return $ unwords $ (nub $ concat $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))) \\ (a : [])
 
 wnSearchHypernymTest1 :: String -> Net b
 wnSearchHypernymTest1 a = do
