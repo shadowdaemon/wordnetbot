@@ -15,7 +15,7 @@ import Prelude
 
 --import NLP.Nerf
 import NLP.WordNet
-import NLP.WordNet.Prims (getIndexString, indexLookup, indexToSenseKey, getSynsetForSense, senseCount, getSynset, getWords, getGloss)
+import NLP.WordNet.Prims (getIndexString, indexLookup, senseCount, getSynset, getWords, getGloss)
 import NLP.WordNet.PrimTypes
 
 wndir  = "/usr/share/wordnet/dict/"
@@ -130,10 +130,9 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy rev
 evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
 evalCmd _ _ (x:xs) | x == "!search"     = wnSearchTest2 (head xs)
-evalCmd _ _ (x:xs) | x == "!hypernym"   = wnSearchHypernymTest1 (head xs)
-evalCmd _ _ (x:xs) | x == "!overview"   = wnOverviewTest (head xs)
+evalCmd a _ (x:xs) | x == "!hypernym"   = wnSearchHypernym1 (head xs) >>= chanMsg a
 evalCmd _ _ (x:xs) | x == "!type"       = wnWordTypeTest (head xs)
-evalCmd a b (x:xs) | x == "!words"      = wnGetWordsTest3 (head xs) >>= replyMsg a b
+evalCmd a _ (x:xs) | x == "!words"      = wnGetWordsTest (head xs) >>= chanMsg a
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -202,6 +201,14 @@ wnTypePOS a = do
       | fromJust (elemIndex (maximum a) a) == 3 = Adv
       | otherwise                               = Verb
 
+wnSearchHypernym :: String -> Net String
+wnSearchHypernym [] = return [] :: Net String
+wnSearchHypernym a = do
+    h <- asks socket
+    w <- asks wne
+    wnPos <- wnTypePOS a
+    return $ replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset) (concat (fromMaybe [[]] (runs w (relatedByList Hypernym (search a wnPos AllSenses)))))
+
 
 {- TESTING -}
 
@@ -232,29 +239,14 @@ wnSearchTest2 a = do
     result <- io $ return $ runs w (search a wnPos 1)
     io $ hPrintf h "PRIVMSG %s :" chan; io $ hPrint h result; io $ hPrintf h "\r\n"
 
-wnGetWordsTest1 a = do
-    h <- asks socket
-    w <- asks wne
-    wnPos <- wnTypePOS a
-    result <- io $ return $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))
-    io $ printf "PRIVMSG %s :" chan; io $ print result; io $ printf "\r\n"
-
-wnGetWordsTest2 a = do
-    h <- asks socket
-    w <- asks wne
-    wnPos <- wnTypePOS a
-    result <- io $ return $ (nub $ concat $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))) \\ (a : [])
-    io $ printf "PRIVMSG %s :Words -> " chan; io $ print result; io $ printf "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Words -> " chan; io $ hPrint h result; io $ hPrintf h "\r\n"
-
-wnGetWordsTest3 :: String -> Net String
-wnGetWordsTest3 a = do
+wnGetWordsTest :: String -> Net String
+wnGetWordsTest a = do
     w <- asks wne
     wnPos <- wnTypePOS a
     return $ replace '_' ' ' $ unwords $ (nub $ concat $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))) \\ (a : [])
 
-wnSearchHypernymTest1 :: String -> Net b
-wnSearchHypernymTest1 a = do
+wnSearchHypernymTest11 :: String -> Net b
+wnSearchHypernymTest11 a = do
     h <- asks socket
     w <- asks wne
     result1 <- io $ return $ runs w (relatedByList Hypernym (search a Noun AllSenses))
