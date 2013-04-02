@@ -14,7 +14,7 @@ import Prelude
 
 --import NLP.Nerf
 import NLP.WordNet
-import NLP.WordNet.Prims (getIndexString, indexLookup, indexToSenseKey, getSynsetForSense, senseCount)
+import NLP.WordNet.Prims (getIndexString, indexLookup, indexToSenseKey, getSynsetForSense, senseCount, getSynset, getWords, getGloss)
 import NLP.WordNet.PrimTypes
 
 wndir  = "/usr/share/wordnet/dict/"
@@ -128,10 +128,11 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy rev
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd _ _ (x:xs) | x == "!hypernym"   = wnSearchHypernymTest (head xs)
-evalCmd _ _ (x:xs) | x == "!search"     = wnSearchTest (head xs)
+evalCmd _ _ (x:xs) | x == "!search"     = wnSearchTest2 (head xs)
+evalCmd _ _ (x:xs) | x == "!hypernym"   = wnSearchHypernymTest1 (head xs)
 evalCmd _ _ (x:xs) | x == "!overview"   = wnOverviewTest (head xs)
 evalCmd _ _ (x:xs) | x == "!type"       = wnWordTypeTest (head xs)
+evalCmd _ _ (x:xs) | x == "!words"      = wnGetWordsTest1 (head xs)
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -193,8 +194,24 @@ wnTypePOS a = do
       | fromJust (elemIndex (maximum a) a) == 3 = Adv
       | otherwise                               = Verb
 
-wnSearchTest :: String -> Net b
-wnSearchTest a = do
+
+{- TESTING -}
+
+
+-- Needs "MonadReader Bot" instance
+--instance MonadReader Bot [] where
+--    ReaderT socket = False
+wnSearch :: MonadReader Bot m => String -> m [SearchResult]
+--wnSearch :: Monad m => String -> WordNetEnv -> m [SearchResult]
+wnSearch a = do
+    w <- asks wne
+    return $ runs w (search a Noun AllSenses)
+    return $ runs w (search a Verb AllSenses)
+    return $ runs w (search a Adj AllSenses)
+    return $ runs w (search a Adv AllSenses)
+
+wnSearchTest1 :: String -> Net b
+wnSearchTest1 a = do
     h <- asks socket
     w <- asks wne
     result1 <- io $ return $ runs w (search a Noun AllSenses)
@@ -206,14 +223,43 @@ wnSearchTest a = do
     io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
 
-wnSearchHypernymTest :: String -> Net b
-wnSearchHypernymTest a = do
+wnSearchTest2 :: String -> Net b
+wnSearchTest2 a = do
     h <- asks socket
     w <- asks wne
-    -- result1 <- io $ return $ runs w (relatedByList Hypernym (search a Noun AllSenses))
-    -- result2 <- io $ return $ runs w (relatedByList Hypernym (search a Verb AllSenses))
-    -- result3 <- io $ return $ runs w (relatedByList Hypernym (search a Adj AllSenses))
-    -- result4 <- io $ return $ runs w (relatedByList Hypernym (search a Adv AllSenses))
+    wnPos <- wnTypePOS a
+    result <- io $ return $ runs w (search a wnPos 1)
+    io $ hPrintf h "PRIVMSG %s :" chan; io $ hPrint h result; io $ hPrintf h "\r\n"
+
+wnGetWordsTest1 a = do
+    h <- asks socket
+    w <- asks wne
+    wnPos <- wnTypePOS a
+    result <- io $ return $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))
+    io $ printf "PRIVMSG %s :" chan; io $ print result; io $ printf "\r\n"
+
+wnSearchHypernymTest1 :: String -> Net b
+wnSearchHypernymTest1 a = do
+    h <- asks socket
+    w <- asks wne
+    result1 <- io $ return $ runs w (relatedByList Hypernym (search a Noun AllSenses))
+    result2 <- io $ return $ runs w (relatedByList Hypernym (search a Verb AllSenses))
+    result3 <- io $ return $ runs w (relatedByList Hypernym (search a Adj AllSenses))
+    result4 <- io $ return $ runs w (relatedByList Hypernym (search a Adv AllSenses))
+    -- Spams IRC!
+    -- io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
+    -- io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
+    -- io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
+    -- io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+    io $ printf "PRIVMSG %s :Noun -> " chan; io $ print result1; io $ printf "\r\n"
+    io $ printf "PRIVMSG %s :Verb -> " chan; io $ print result2; io $ printf "\r\n"
+    io $ printf "PRIVMSG %s :Adj -> " chan; io $ print result3; io $ printf "\r\n"
+    io $ printf "PRIVMSG %s :Adv -> " chan; io $ print result4; io $ printf "\r\n"
+
+wnSearchHypernymTest2 :: String -> Net b
+wnSearchHypernymTest2 a = do
+    h <- asks socket
+    w <- asks wne
     result1 <- io $ return $ runs w (closureOnList Hypernym (search a Noun AllSenses))
     result2 <- io $ return $ runs w (closureOnList Hypernym (search a Verb AllSenses))
     result3 <- io $ return $ runs w (closureOnList Hypernym (search a Adj AllSenses))

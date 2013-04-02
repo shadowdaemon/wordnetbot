@@ -125,7 +125,7 @@ data Synset =
        searchType :: Int,
        headWord :: String,
        headSense :: SenseType
-     } -- deriving (Show)
+     } deriving (Show)
 
 synset0 = Synset 0 UnknownEPos (-1) undefined [] Nothing [] [] "" Nothing (-1) "" AllSenses
 

@@ -23,7 +23,10 @@ module NLP.WordNet.Prims
      readSynset,
      indexToSenseKey,
      indexLookup,
-     senseCount
+     senseCount,
+     getSynset,
+     getWords,
+     getGloss
     )
     where
 
@@ -312,11 +315,11 @@ binarySearch h s = do
 senseCount :: Index -> Int
 senseCount (Index _ _ indexSenseCount _ _ _) = indexSenseCount
 
-searchList :: [SearchResult] -> [Synset]
-searchList a = map searchList' a
-  where
-    searchList' (SearchResult _ _ _ _ srSynset) = srSynset
+getSynset :: SearchResult -> Synset
+getSynset (SearchResult _ _ _ _ srSynset) = srSynset
 
--- wordList a = map wordList' a
---   where
---     wordList' (T.Synset
+getWords :: Synset -> [String]
+getWords (Synset _ _ _ _ ssWords _ _ _ _ _ _ _ _) = [w | (w,x,y) <- ssWords]
+
+getGloss :: Synset -> String
+getGloss (Synset _ _ _ _ _ _ _ _ defn _ _ _ _) = defn
