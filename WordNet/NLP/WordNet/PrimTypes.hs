@@ -64,11 +64,26 @@ instance Ix EPOS where
 
 
 readEPOS :: String -> EPOS
-readEPOS "n" = POS Noun
-readEPOS "v" = POS Verb
-readEPOS "a" = POS Adj
-readEPOS "r" = POS Adv
-readEPOS "s" = Satellite
+readEPOS "n"           = POS Noun
+readEPOS "v"           = POS Verb
+readEPOS "a"           = POS Adj
+readEPOS "r"           = POS Adv
+readEPOS "s"           = Satellite
+readEPOS "noun"        = POS Noun
+readEPOS "verb"        = POS Verb
+readEPOS "adj"         = POS Adj
+readEPOS "adv"         = POS Adv
+readEPOS "adjective"   = POS Adj
+readEPOS "adverb"      = POS Adv
+readEPOS "satellite"   = Satellite
+readEPOS "Noun"        = POS Noun
+readEPOS "Verb"        = POS Verb
+readEPOS "Adj"         = POS Adj
+readEPOS "Adv"         = POS Adv
+readEPOS "Adjective"   = POS Adj
+readEPOS "Adverb"      = POS Adv
+readEPOS "Satellite"   = Satellite
+readEPOS _             = UnknownEPos
 
 data WordNetEnv =
      WordNetEnv {
@@ -169,6 +184,20 @@ data Form = Antonym | Hypernym | Hyponym | Entailment | Similar
           | Unknown
           deriving (Eq, Ord, Show, Enum, Typeable)
 
+allForm = [Antonym ..]
+
+readForm :: String -> Form
+readForm "antonym"    = Antonym
+readForm "hypernym"   = Hypernym
+readForm "hyponym"    = Hyponym
+readForm "meronym"    = Meronym
+readForm "holonym"    = Holonym
+readForm "Antonym"    = Antonym
+readForm "Hypernym"   = Hypernym
+readForm "Hyponym"    = Hyponym
+readForm "Meronym"    = Meronym
+readForm "Holonym"    = Holonym
+readForm _            = Unknown
 
 -- | A 'SenseType' is a way of controlling search.  Either you specify
 -- a certain sense (using @SenseNumber n@, or, since 'SenseType' is an

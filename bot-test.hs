@@ -105,12 +105,14 @@ processLine :: [String] -> Net ()
 processLine a
     | length a == 0     = return ()
     | length msg' == 0  = return () -- Ignore because not PRIVMSG.
-    | chan' == nick     = if (head $ head msg') == '!' then evalCmd chan' who' msg' -- Evaluate command.
-                          else reply [] who' msg' -- Respond to PM.
+    | chan' == nick     = reply [] who' msg' -- Respond to PM.
+    -- | chan' == nick     = if (head $ head msg') == '!' then evalCmd chan' who' msg' -- Evaluate command (broken).
+    --                       else reply [] who' msg' -- Respond to PM.
     | spokenTo msg'     = if (head $ head $ tail msg') == '!' then evalCmd chan' who' (tail msg') -- Evaluate command.
                           else reply chan' who' (tail msg') -- Respond upon being addressed.
---    | otherwise         = processMsg chan' who' msg' -- Process message.
-    | otherwise         = reply chan' [] msg' -- Testing.
+    | otherwise         = return ()
+    -- | otherwise         = processMsg chan' who' msg' -- Process message.
+    -- | otherwise         = reply chan' [] msg' -- Testing.
   where
     msg' = getMsg a
     who' = getNick a
@@ -118,9 +120,9 @@ processLine a
 
 -- Reply to message.
 reply :: String -> String -> [String] -> Net ()
-reply [] who' msg = privMsg who' $ reverse $ unwords msg
-reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg
-reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.
+reply [] who' msg = privMsg who' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  (PM)
+reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg -- Channel talk.
+reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in channel.
 
 -- Process messages.
 --processMsg :: String -> String -> [String] -> ReaderT Bot IO ()
@@ -129,10 +131,16 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy rev
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd _ _ (x:xs) | x == "!search"     = wnSearchTest2 (head xs)
-evalCmd a _ (x:xs) | x == "!hypernym"   = wnSearchHypernym1 (head xs) >>= chanMsg a
-evalCmd _ _ (x:xs) | x == "!type"       = wnWordTypeTest (head xs)
-evalCmd a _ (x:xs) | x == "!words"      = wnGetWordsTest (head xs) >>= chanMsg a
+evalCmd a b (x:xs) | x == "!wordnet"    =
+    case (length xs) of
+      3 -> wnSearch (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
+      2 -> wnSearch (xs!!0) (xs!!1) []      >>= replyMsg a b
+      1 -> wnSearch (xs!!0) []      []      >>= replyMsg a b
+      0 -> replyMsg a b "Usage: !wordnet <word> <form> <part-of-speech>"
+      _ -> replyMsg a b "Usage: !wordnet <word> <form> <part-of-speech>"
+evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (show allForm)
+evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (show allPOS)
+evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !wordnet !forms !parts"
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -193,21 +201,27 @@ wnTypePOS a = do
     return (type' ((count' ind1) : (count' ind2) : (count' ind3) : (count' ind4) : []))
   where
     count' a = if isJust a then senseCount (fromJust a) else 0
-    type' [] = Verb
+    type' [] = Adj
     type' a
       | fromJust (elemIndex (maximum a) a) == 0 = Noun
       | fromJust (elemIndex (maximum a) a) == 1 = Verb
       | fromJust (elemIndex (maximum a) a) == 2 = Adj
       | fromJust (elemIndex (maximum a) a) == 3 = Adv
-      | otherwise                               = Verb
+      | otherwise                               = Adj
 
-wnSearchHypernym :: String -> Net String
-wnSearchHypernym [] = return [] :: Net String
-wnSearchHypernym a = do
+wnSearch :: String -> String -> String -> Net String
+wnSearch [] _ _  = return [] :: Net String
+wnSearch a  b [] = do
+    wnPos <- wnTypeString a
+    wnSearch a b wnPos
+wnSearch a [] _  = wnSearch a "Hypernym" []
+wnSearch a b c = do
     h <- asks socket
     w <- asks wne
-    wnPos <- wnTypePOS a
-    return $ replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset) (concat (fromMaybe [[]] (runs w (relatedByList Hypernym (search a wnPos AllSenses)))))
+    let wnForm = readForm b
+    let wnPos = fromEPOS $ readEPOS c
+    return $ replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
+      (concat (fromMaybe [[]] (runs w (relatedByList wnForm (search a wnPos AllSenses)))))
 
 
 {- TESTING -}

@@ -89,3 +89,12 @@ PRIVMSG #lolbots :Words -> []
 PRIVMSG #lolbots :Words -> []
 :shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG #lolbots :wordnetbot: !words laptop
 PRIVMSG #lolbots :Words -> ["laptop_computer"]
+
+
+:shadowdaemon!~boring@unaffiliated/shadowdaemon PRIVMSG wordnetbot :!help
+> PRIVMSG wordnetbot :shadowdaemon: Commands: !wordnet !forms !parts
+:wordnetbot!~wordnetbo@203.111.138.234 PRIVMSG wordnetbot :shadowdaemon: Commands: !wordnet !forms !parts
+> PRIVMSG wordnetbot :strap! smrof! tendrow! :sdnammoC :nomeadwodahs
+:wordnetbot!~wordnetbo@203.111.138.234 PRIVMSG wordnetbot :strap! smrof! tendrow! :sdnammoC :nomeadwodahs
+> PRIVMSG wordnetbot :shadowdaemon: Commands: !wordnet !forms !parts
+:wordnetbot!~wordnetbo@203.111.138.234 PRIVMSG wordnetbot :shadowdaemon: Commands: !wordnet !forms !parts
