@@ -1,5 +1,6 @@
 import Data.List
 import Data.Maybe
+import Data.Tree (flatten)
 import Network
 --import System.CPUTime
 import System.Directory
@@ -21,7 +22,7 @@ import NLP.WordNet.PrimTypes
 wndir  = "/usr/share/wordnet/dict/"
 server = "irc.freenode.org"
 port   = 6667
-chan   = "#anapnea"
+chan   = "#lolbots"
 nick   = "wordnetbot"
 owner  = "shadowdaemon"
 
@@ -137,6 +138,12 @@ evalCmd a b (x:xs) | x == "!related"    =
       2 -> wnRelated (xs!!0) (xs!!1) []      >>= replyMsg a b
       1 -> wnRelated (xs!!0) []      []      >>= replyMsg a b
       _ -> replyMsg a b "Usage: !related word [form] [part-of-speech]"
+evalCmd a b (x:xs) | x == "!closure"    =
+    case (length xs) of
+      3 -> wnClosure (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
+      2 -> wnClosure (xs!!0) (xs!!1) []      >>= replyMsg a b
+      1 -> wnClosure (xs!!0) []      []      >>= replyMsg a b
+      _ -> replyMsg a b "Usage: !closure word [form] [part-of-speech]"
 evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
 evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
 evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !related !forms !parts !quit"
@@ -223,6 +230,21 @@ wnRelated a b c = do
     let wnPos = fromEPOS $ readEPOS c
     let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
                    (concat (fromMaybe [[]] (runs w (relatedByList wnForm (search a wnPos AllSenses)))))
+    if (null result) then return "Nothing!" else return result
+
+wnClosure :: String -> String -> String -> Net String
+wnClosure [] _ _  = return [] :: Net String
+wnClosure a  b [] = do
+    wnPos <- wnPartString a -- POS not given so use most common.
+    wnClosure a b wnPos
+wnClosure a [] _  = wnClosure a "Hypernym" []
+wnClosure a b c = do
+    h <- asks socket
+    w <- asks wne
+    let wnForm = readForm b
+    let wnPos = fromEPOS $ readEPOS c
+    let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
+                   (concat (map flatten (fromMaybe [] (runs w (closureOnList wnForm (search a wnPos 1))))))
     if (null result) then return "Nothing!" else return result
 
 

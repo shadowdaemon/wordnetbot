@@ -77,7 +77,7 @@ readEPOS a | map toLower a == "adv"         = POS Adv
 readEPOS a | map toLower a == "adjective"   = POS Adj
 readEPOS a | map toLower a == "adverb"      = POS Adv
 readEPOS a | map toLower a == "satellite"   = Satellite
-readEPOS _             = UnknownEPos
+readEPOS _                                  = UnknownEPos
 
 data WordNetEnv =
      WordNetEnv {
