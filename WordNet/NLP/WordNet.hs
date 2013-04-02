@@ -45,8 +45,10 @@ module NLP.WordNet
 
      -- * The agglomeration functions
      relatedBy,
-     closure,
+     relatedByList,
+     -- closure,
      closureOn,
+     closureOnList,
 
      -- * Computing lowest-common ancestor functions; the implementation
      --   of these can be tuned by providing a different "Bag" implementation.
@@ -202,6 +204,10 @@ lookupKey (T.Key (o,p)) = unsafePerformIO $ do
 relatedBy :: WN (Form -> SearchResult -> [SearchResult])
 relatedBy form sr = map lookupKey $ srFormKeys sr form
 
+relatedByList :: WN (Form -> [SearchResult] -> Maybe [[SearchResult]])
+relatedByList form [] = Nothing
+relatedByList form sr = Just (map (relatedBy form) sr)
+
 -- | This is a utility function to build lazy trees from a function and a root.
 closure :: (a -> [a]) -> a -> Tree a
 closure f x = Node x (map (closure f) $ f x)
@@ -221,6 +227,10 @@ closure f x = Node x (map (closure f) $ f x)
 -- >   --- <object physical_object> --- <entity> 
 closureOn :: WN (Form -> SearchResult -> Tree SearchResult)
 closureOn form = closure (relatedBy form)
+
+closureOnList :: WN (Form -> [SearchResult] -> Maybe [Tree SearchResult])
+closureOnList form [] = Nothing
+closureOnList form sr = Just (map (closure (relatedBy form)) sr)
 
 -- | A simple bag class for our 'meet' implementation.
 class Bag b a where
@@ -335,4 +345,3 @@ meetSearchPaths emptyBg t1 t2 =
 
 personTree       = runWordNetQuiet (closureOn Hypernym (head $ search "person"       Noun AllSenses))
 organizationTree = runWordNetQuiet (closureOn Hypernym (head $ search "organization" Noun AllSenses))
-

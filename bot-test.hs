@@ -128,7 +128,8 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy rev
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd _ _ (x:xs) | x == "!search"     = wnSearch (head xs)
+evalCmd _ _ (x:xs) | x == "!hypernym"   = wnSearchHypernym (head xs)
+evalCmd _ _ (x:xs) | x == "!search"     = wnSearchAll (head xs)
 evalCmd _ _ (x:xs) | x == "!overview"   = wnOverview (head xs)
 evalCmd _ _ (x:xs) | x == "!type"       = wnWordType (head xs)
 evalCmd _ _ _                           = return ()
@@ -156,8 +157,8 @@ write s t = do
 io :: IO a -> Net a
 io = liftIO
 
-wnSearch :: String -> Net b
-wnSearch a = do
+wnSearchAll :: String -> Net b
+wnSearchAll a = do
     h <- asks socket
     w <- asks wne
     result1 <- io $ return $ runs w (search a Noun AllSenses)
@@ -168,6 +169,32 @@ wnSearch a = do
     io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+
+wnSearchHypernym :: String -> Net b
+wnSearchHypernym a = do
+    h <- asks socket
+    w <- asks wne
+    -- result1 <- io $ return $ runs w (relatedByList Hypernym (search a Noun AllSenses))
+    -- result2 <- io $ return $ runs w (relatedByList Hypernym (search a Verb AllSenses))
+    -- result3 <- io $ return $ runs w (relatedByList Hypernym (search a Adj AllSenses))
+    -- result4 <- io $ return $ runs w (relatedByList Hypernym (search a Adv AllSenses))
+    result1 <- io $ return $ runs w (closureOnList Hypernym (search a Noun AllSenses))
+    result2 <- io $ return $ runs w (closureOnList Hypernym (search a Verb AllSenses))
+    result3 <- io $ return $ runs w (closureOnList Hypernym (search a Adj AllSenses))
+    result4 <- io $ return $ runs w (closureOnList Hypernym (search a Adv AllSenses))
+    -- io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
+    -- io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
+    -- io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
+    -- io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+    io $ printf "PRIVMSG %s :Noun -> " chan; io $ print result1; io $ printf "\r\n"
+    io $ printf "PRIVMSG %s :Verb -> " chan; io $ print result2; io $ printf "\r\n"
+    io $ printf "PRIVMSG %s :Adj -> " chan; io $ print result3; io $ printf "\r\n"
+    io $ printf "PRIVMSG %s :Adv -> " chan; io $ print result4; io $ printf "\r\n"
+
+-- String -> POS -> Sense
+--wnReplace a b c = do
+--    w <- asks wne
+    
 
 wnOverview :: String -> Net b
 wnOverview a = do
@@ -189,8 +216,8 @@ wnWordType a = do
     io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
 
-wnType :: String -> Net String
-wnType a = do
+wnTypeString :: String -> Net String
+wnTypeString a = do
     w <- asks wne
     ind1 <- io $ indexLookup w a Noun
     ind2 <- io $ indexLookup w a Verb
@@ -207,36 +234,20 @@ wnType a = do
       | fromJust (elemIndex (maximum a) a) == 3 = "Adv"
       | otherwise                               = "Other"
 
---foo a = wnType $ wnSenseCount a
-
-{-
-tryDir :: FilePath -> Maybe FilePath
-tryDir a
-    | length a > 0 = Just a
-    | otherwise    = Nothing
-
-tryDir2 :: FilePath -> IO (Maybe FilePath)
-tryDir2 a = do
-    dir <- doesDirectoryExist a
---    if dir then do return (Just a) else do return (Nothing)
-    do if dir then return (Just a) else return (Nothing)
---tryDir3 a = do b <- tryDir2 a ; return b
-
-foo a = do
-    w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath)
-      (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
-    return $ runs w (search a Noun AllSenses)
-
-foo2 :: String -> ReaderT Bot IO [SearchResult]
-foo2 a = do
+wnTypePOS :: String -> Net POS
+wnTypePOS a = do
     w <- asks wne
-    return $ runs w (search a Noun AllSenses)
-
-tryIOError :: IO a -> IO (Either IOError a)
-tryIOError = try
-
-return "WHAT" :: Maybe String
-
-wnOverview :: String -> IO Overview
-wnOverview a = runWordNetWithOptions (tryDir wndir) (Just (\_ _ -> return ())) (getOverview a)
--}
+    ind1 <- io $ indexLookup w a Noun
+    ind2 <- io $ indexLookup w a Verb
+    ind3 <- io $ indexLookup w a Adj
+    ind4 <- io $ indexLookup w a Adv
+    return (type' ((count' ind1) : (count' ind2) : (count' ind3) : (count' ind4) : []))
+  where
+    count' a = if isJust a then senseCount (fromJust a) else 0
+    type' [] = Verb
+    type' a
+      | fromJust (elemIndex (maximum a) a) == 0 = Noun
+      | fromJust (elemIndex (maximum a) a) == 1 = Verb
+      | fromJust (elemIndex (maximum a) a) == 2 = Adj
+      | fromJust (elemIndex (maximum a) a) == 3 = Adv
+      | otherwise                               = Verb

@@ -311,3 +311,12 @@ binarySearch h s = do
 
 senseCount :: Index -> Int
 senseCount (Index _ _ indexSenseCount _ _ _) = indexSenseCount
+
+searchList :: [SearchResult] -> [Synset]
+searchList a = map searchList' a
+  where
+    searchList' (SearchResult _ _ _ _ srSynset) = srSynset
+
+-- wordList a = map wordList' a
+--   where
+--     wordList' (T.Synset
