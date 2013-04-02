@@ -128,10 +128,10 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Cheesy rev
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd _ _ (x:xs) | x == "!hypernym"   = wnSearchHypernym (head xs)
-evalCmd _ _ (x:xs) | x == "!search"     = wnSearchAll (head xs)
-evalCmd _ _ (x:xs) | x == "!overview"   = wnOverview (head xs)
-evalCmd _ _ (x:xs) | x == "!type"       = wnWordType (head xs)
+evalCmd _ _ (x:xs) | x == "!hypernym"   = wnSearchHypernymTest (head xs)
+evalCmd _ _ (x:xs) | x == "!search"     = wnSearchTest (head xs)
+evalCmd _ _ (x:xs) | x == "!overview"   = wnOverviewTest (head xs)
+evalCmd _ _ (x:xs) | x == "!type"       = wnWordTypeTest (head xs)
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -156,65 +156,6 @@ write s t = do
 -- Convenience.
 io :: IO a -> Net a
 io = liftIO
-
-wnSearchAll :: String -> Net b
-wnSearchAll a = do
-    h <- asks socket
-    w <- asks wne
-    result1 <- io $ return $ runs w (search a Noun AllSenses)
-    result2 <- io $ return $ runs w (search a Verb AllSenses)
-    result3 <- io $ return $ runs w (search a Adj AllSenses)
-    result4 <- io $ return $ runs w (search a Adv AllSenses)
-    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
-
-wnSearchHypernym :: String -> Net b
-wnSearchHypernym a = do
-    h <- asks socket
-    w <- asks wne
-    -- result1 <- io $ return $ runs w (relatedByList Hypernym (search a Noun AllSenses))
-    -- result2 <- io $ return $ runs w (relatedByList Hypernym (search a Verb AllSenses))
-    -- result3 <- io $ return $ runs w (relatedByList Hypernym (search a Adj AllSenses))
-    -- result4 <- io $ return $ runs w (relatedByList Hypernym (search a Adv AllSenses))
-    result1 <- io $ return $ runs w (closureOnList Hypernym (search a Noun AllSenses))
-    result2 <- io $ return $ runs w (closureOnList Hypernym (search a Verb AllSenses))
-    result3 <- io $ return $ runs w (closureOnList Hypernym (search a Adj AllSenses))
-    result4 <- io $ return $ runs w (closureOnList Hypernym (search a Adv AllSenses))
-    -- io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
-    -- io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
-    -- io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
-    -- io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
-    io $ printf "PRIVMSG %s :Noun -> " chan; io $ print result1; io $ printf "\r\n"
-    io $ printf "PRIVMSG %s :Verb -> " chan; io $ print result2; io $ printf "\r\n"
-    io $ printf "PRIVMSG %s :Adj -> " chan; io $ print result3; io $ printf "\r\n"
-    io $ printf "PRIVMSG %s :Adv -> " chan; io $ print result4; io $ printf "\r\n"
-
--- String -> POS -> Sense
---wnReplace a b c = do
---    w <- asks wne
-    
-
-wnOverview :: String -> Net b
-wnOverview a = do
-    h <- asks socket
-    w <- asks wne
-    result <- io $ return $ runs w (getOverview a)
-    io $ hPrintf h "PRIVMSG %s :" chan; io $ hPrint h result; io $ hPrintf h "\r\n"
-
-wnWordType :: String -> Net b
-wnWordType a = do
-    h <- asks socket
-    w <- asks wne
-    result1 <- io $ (getIndexString w a Noun)
-    result2 <- io $ (getIndexString w a Verb)
-    result3 <- io $ (getIndexString w a Adj)
-    result4 <- io $ (getIndexString w a Adv)
-    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
 
 wnTypeString :: String -> Net String
 wnTypeString a = do
@@ -251,3 +192,58 @@ wnTypePOS a = do
       | fromJust (elemIndex (maximum a) a) == 2 = Adj
       | fromJust (elemIndex (maximum a) a) == 3 = Adv
       | otherwise                               = Verb
+
+wnSearchTest :: String -> Net b
+wnSearchTest a = do
+    h <- asks socket
+    w <- asks wne
+    result1 <- io $ return $ runs w (search a Noun AllSenses)
+    result2 <- io $ return $ runs w (search a Verb AllSenses)
+    result3 <- io $ return $ runs w (search a Adj AllSenses)
+    result4 <- io $ return $ runs w (search a Adv AllSenses)
+    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+
+wnSearchHypernymTest :: String -> Net b
+wnSearchHypernymTest a = do
+    h <- asks socket
+    w <- asks wne
+    -- result1 <- io $ return $ runs w (relatedByList Hypernym (search a Noun AllSenses))
+    -- result2 <- io $ return $ runs w (relatedByList Hypernym (search a Verb AllSenses))
+    -- result3 <- io $ return $ runs w (relatedByList Hypernym (search a Adj AllSenses))
+    -- result4 <- io $ return $ runs w (relatedByList Hypernym (search a Adv AllSenses))
+    result1 <- io $ return $ runs w (closureOnList Hypernym (search a Noun AllSenses))
+    result2 <- io $ return $ runs w (closureOnList Hypernym (search a Verb AllSenses))
+    result3 <- io $ return $ runs w (closureOnList Hypernym (search a Adj AllSenses))
+    result4 <- io $ return $ runs w (closureOnList Hypernym (search a Adv AllSenses))
+    -- Spams IRC!
+    -- io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
+    -- io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
+    -- io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
+    -- io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+    io $ printf "PRIVMSG %s :Noun -> " chan; io $ print result1; io $ printf "\r\n"
+    io $ printf "PRIVMSG %s :Verb -> " chan; io $ print result2; io $ printf "\r\n"
+    io $ printf "PRIVMSG %s :Adj -> " chan; io $ print result3; io $ printf "\r\n"
+    io $ printf "PRIVMSG %s :Adv -> " chan; io $ print result4; io $ printf "\r\n"
+
+wnOverviewTest :: String -> Net b
+wnOverviewTest a = do
+    h <- asks socket
+    w <- asks wne
+    result <- io $ return $ runs w (getOverview a)
+    io $ hPrintf h "PRIVMSG %s :" chan; io $ hPrint h result; io $ hPrintf h "\r\n"
+
+wnWordTypeTest :: String -> Net b
+wnWordTypeTest a = do
+    h <- asks socket
+    w <- asks wne
+    result1 <- io $ (getIndexString w a Noun)
+    result2 <- io $ (getIndexString w a Verb)
+    result3 <- io $ (getIndexString w a Adj)
+    result4 <- io $ (getIndexString w a Adv)
+    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
+    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
