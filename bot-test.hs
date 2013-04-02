@@ -21,7 +21,7 @@ import NLP.WordNet.PrimTypes
 wndir  = "/usr/share/wordnet/dict/"
 server = "irc.freenode.org"
 port   = 6667
-chan   = "#lolbots"
+chan   = "#anapnea"
 nick   = "wordnetbot"
 owner  = "shadowdaemon"
 
@@ -120,8 +120,8 @@ processLine a
 
 -- Reply to message.
 reply :: String -> String -> [String] -> Net ()
-reply [] who' msg = privMsg who' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  (PM)
-reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg -- Channel talk.
+reply [] who' msg = privMsg who' "Eh?" -- PM.
+reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  Channel talk.
 reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in channel.
 
 -- Process messages.
@@ -136,10 +136,9 @@ evalCmd a b (x:xs) | x == "!wordnet"    =
       3 -> wnSearch (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
       2 -> wnSearch (xs!!0) (xs!!1) []      >>= replyMsg a b
       1 -> wnSearch (xs!!0) []      []      >>= replyMsg a b
-      0 -> replyMsg a b "Usage: !wordnet <word> <form> <part-of-speech>"
-      _ -> replyMsg a b "Usage: !wordnet <word> <form> <part-of-speech>"
-evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (show allForm)
-evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (show allPOS)
+      _ -> replyMsg a b "Usage: !wordnet word [form] [part-of-speech]"
+evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
+evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
 evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !wordnet !forms !parts"
 evalCmd _ _ _                           = return ()
 
@@ -220,8 +219,10 @@ wnSearch a b c = do
     w <- asks wne
     let wnForm = readForm b
     let wnPos = fromEPOS $ readEPOS c
-    return $ replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
-      (concat (fromMaybe [[]] (runs w (relatedByList wnForm (search a wnPos AllSenses)))))
+    let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
+                   (concat (fromMaybe [[]] (runs w (relatedByList wnForm (search a wnPos AllSenses)))))
+    if (null result) then return "Nothing!" else return result
+
 
 
 {- TESTING -}
@@ -232,6 +233,7 @@ wnSearch a b c = do
 --     w <- asks wne
 --     wnPos <- wnTypePOS a
 
+{-
 wnSearchTest1 :: String -> Net b
 wnSearchTest1 a = do
     h <- asks socket
@@ -314,3 +316,5 @@ wnWordTypeTest a = do
     io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
     io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
+
+-}
