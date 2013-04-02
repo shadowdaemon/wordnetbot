@@ -15,7 +15,7 @@ import Prelude
 
 --import NLP.Nerf
 import NLP.WordNet
-import NLP.WordNet.Prims (getIndexString, indexLookup, senseCount, getSynset, getWords, getGloss)
+import NLP.WordNet.Prims (indexLookup, senseCount, getSynset, getWords, getGloss)
 import NLP.WordNet.PrimTypes
 
 wndir  = "/usr/share/wordnet/dict/"
@@ -172,8 +172,9 @@ replace a b (x:xs)
     | x == a    = b : replace a b xs
     | otherwise = x : replace a b xs
 
-wnTypeString :: String -> Net String
-wnTypeString a = do
+-- Try to determine most common POS for word.
+wnPartString :: String -> Net String
+wnPartString a = do
     w <- asks wne
     ind1 <- io $ indexLookup w a Noun
     ind2 <- io $ indexLookup w a Verb
@@ -190,8 +191,9 @@ wnTypeString a = do
       | fromJust (elemIndex (maximum a) a) == 3 = "Adv"
       | otherwise                               = "Other"
 
-wnTypePOS :: String -> Net POS
-wnTypePOS a = do
+-- Try to determine most common POS for word.
+wnPartPOS :: String -> Net POS
+wnPartPOS a = do
     w <- asks wne
     ind1 <- io $ indexLookup w a Noun
     ind2 <- io $ indexLookup w a Verb
@@ -211,7 +213,7 @@ wnTypePOS a = do
 wnSearch :: String -> String -> String -> Net String
 wnSearch [] _ _  = return [] :: Net String
 wnSearch a  b [] = do
-    wnPos <- wnTypeString a
+    wnPos <- wnPartString a -- POS not given so use most common.
     wnSearch a b wnPos
 wnSearch a [] _  = wnSearch a "Hypernym" []
 wnSearch a b c = do
