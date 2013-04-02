@@ -131,15 +131,15 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in c
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd a b (x:xs) | x == "!wordnet"    =
+evalCmd a b (x:xs) | x == "!related"    =
     case (length xs) of
-      3 -> wnSearch (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
-      2 -> wnSearch (xs!!0) (xs!!1) []      >>= replyMsg a b
-      1 -> wnSearch (xs!!0) []      []      >>= replyMsg a b
-      _ -> replyMsg a b "Usage: !wordnet word [form] [part-of-speech]"
+      3 -> wnRelated (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
+      2 -> wnRelated (xs!!0) (xs!!1) []      >>= replyMsg a b
+      1 -> wnRelated (xs!!0) []      []      >>= replyMsg a b
+      _ -> replyMsg a b "Usage: !related word [form] [part-of-speech]"
 evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
 evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
-evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !wordnet !forms !parts"
+evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !related !forms !parts !quit"
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -210,13 +210,13 @@ wnPartPOS a = do
       | fromJust (elemIndex (maximum a) a) == 3 = Adv
       | otherwise                               = Adj
 
-wnSearch :: String -> String -> String -> Net String
-wnSearch [] _ _  = return [] :: Net String
-wnSearch a  b [] = do
+wnRelated :: String -> String -> String -> Net String
+wnRelated [] _ _  = return [] :: Net String
+wnRelated a  b [] = do
     wnPos <- wnPartString a -- POS not given so use most common.
-    wnSearch a b wnPos
-wnSearch a [] _  = wnSearch a "Hypernym" []
-wnSearch a b c = do
+    wnRelated a b wnPos
+wnRelated a [] _  = wnRelated a "Hypernym" []
+wnRelated a b c = do
     h <- asks socket
     w <- asks wne
     let wnForm = readForm b
