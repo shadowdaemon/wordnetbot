@@ -159,6 +159,13 @@ write s t = do
 io :: IO a -> Net a
 io = liftIO
 
+-- Replace items in list.
+replace :: Eq a => a -> a -> [a] -> [a]
+replace _ _ [] = []
+replace a b (x:xs)
+    | x == a    = b : replace a b xs
+    | otherwise = x : replace a b xs
+
 wnTypeString :: String -> Net String
 wnTypeString a = do
     w <- asks wne
@@ -204,19 +211,6 @@ wnTypePOS a = do
 --     w <- asks wne
 --     wnPos <- wnTypePOS a
 
-
--- Needs "MonadReader Bot" instance
---instance MonadReader Bot [] where
---    ReaderT socket = False
-wnSearchTest3 :: MonadReader Bot m => String -> m [SearchResult]
---wnSearchTest3 :: Monad m => String -> WordNetEnv -> m [SearchResult]
-wnSearchTest3 a = do
-    w <- asks wne
-    return $ runs w (search a Noun AllSenses)
-    return $ runs w (search a Verb AllSenses)
-    return $ runs w (search a Adj AllSenses)
-    return $ runs w (search a Adv AllSenses)
-
 wnSearchTest1 :: String -> Net b
 wnSearchTest1 a = do
     h <- asks socket
@@ -257,7 +251,7 @@ wnGetWordsTest3 :: String -> Net String
 wnGetWordsTest3 a = do
     w <- asks wne
     wnPos <- wnTypePOS a
-    return $ unwords $ (nub $ concat $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))) \\ (a : [])
+    return $ replace '_' ' ' $ unwords $ (nub $ concat $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))) \\ (a : [])
 
 wnSearchHypernymTest1 :: String -> Net b
 wnSearchHypernymTest1 a = do
