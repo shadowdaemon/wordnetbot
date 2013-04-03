@@ -184,6 +184,16 @@ replace a b (x:xs)
     | x == a    = b : replace a b xs
     | otherwise = x : replace a b xs
 
+-- Join list items together if quoted.
+joinWords :: Char -> [String] -> [String]
+joinWords _ []     = []
+joinWords a (x:xs)
+    | (head x) == a   = unwords (x : (take (num + 1) xs)) : joinWords a (drop (num + 1) xs)
+    | otherwise       = x : joinWords a xs
+  where num = fromMaybe 0 (elemIndex a $ map last xs)
+
+--joinWords (x:xs) = x:[] ++ xs
+
 -- Try to determine most common POS for word.
 wnPartString :: String -> Net String
 wnPartString a = do

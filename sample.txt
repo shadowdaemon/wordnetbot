@@ -98,3 +98,8 @@ PRIVMSG #lolbots :Words -> ["laptop_computer"]
 :wordnetbot!~wordnetbo@203.111.138.234 PRIVMSG wordnetbot :strap! smrof! tendrow! :sdnammoC :nomeadwodahs
 > PRIVMSG wordnetbot :shadowdaemon: Commands: !wordnet !forms !parts
 :wordnetbot!~wordnetbo@203.111.138.234 PRIVMSG wordnetbot :shadowdaemon: Commands: !wordnet !forms !parts
+
+<shadowdaemon> wordnetbot: !gloss "street drug"
+<wordnetbot> Nothing!
+<shadowdaemon> wordnetbot: !gloss street_drug
+<wordnetbot> shadowdaemon: a drug that is taken for nonmedicinal reasons                                                                                   (usually for mind-altering effects); drug abuse can lead to                                                                                   physical and mental damage and (with some substances) dependence                                                                              and addiction
