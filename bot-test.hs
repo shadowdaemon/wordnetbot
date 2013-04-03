@@ -131,20 +131,25 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in c
 
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> Net ()
-evalCmd _ b (x:xs) | x == "!quit"       = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd a b (x:xs) | x == "!related"    =
+evalCmd _ b (x:xs) | x == "!quit"    = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
+evalCmd a b (x:xs) | x == "!related" =
+    -- case (length xs) of
+    --   3 -> wnRelated (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
+    --   2 -> wnRelated (xs!!0) (xs!!1) []      >>= replyMsg a b
+    --   1 -> wnRelated (xs!!0) []      []      >>= replyMsg a b
+    --   _ -> replyMsg a b "Usage: !related word [form] [part-of-speech]"
     case (length xs) of
-      3 -> wnRelated (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
-      2 -> wnRelated (xs!!0) (xs!!1) []      >>= replyMsg a b
-      1 -> wnRelated (xs!!0) []      []      >>= replyMsg a b
+      3 -> wnRelated a b (xs!!0) (xs!!1) (xs!!2)
+      2 -> wnRelated a b (xs!!0) (xs!!1) []
+      1 -> wnRelated a b (xs!!0) []      []
       _ -> replyMsg a b "Usage: !related word [form] [part-of-speech]"
-evalCmd a b (x:xs) | x == "!closure"    =
+evalCmd a b (x:xs) | x == "!closure" =
     case (length xs) of
       3 -> wnClosure (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
       2 -> wnClosure (xs!!0) (xs!!1) []      >>= replyMsg a b
       1 -> wnClosure (xs!!0) []      []      >>= replyMsg a b
       _ -> replyMsg a b "Usage: !closure word [form] [part-of-speech]"
-evalCmd a b (x:xs) | x == "!gloss"      =
+evalCmd a b (x:xs) | x == "!gloss"   =
     case (length xs) of
       2 -> wnGloss a b (xs!!0) (xs!!1)
       1 -> wnGloss a b (xs!!0) []
@@ -222,22 +227,45 @@ wnPartPOS a = do
       | fromJust (elemIndex (maximum a) a) == 3 = Adv
       | otherwise                               = Adj
 
-wnRelated :: String -> String -> String -> Net String
-wnRelated [] _ _  = return [] :: Net String
-wnRelated a  b [] = do
+-- Wordnet search.
+-- wnRelated2 :: String -> String -> String -> Net String
+-- wnRelated2 [] _ _  = return [] :: Net String
+-- wnRelated2 a  b [] = do
+--     wnPos <- wnPartString a -- POS not given so use most common.
+--     wnRelated2 a b wnPos
+-- wnRelated2 a [] _  = wnRelated2 a "Hypernym" []
+-- wnRelated2 a b c = do
+--     h <- asks socket
+--     w <- asks wne
+--     let wnForm = readForm b
+--     let wnPos = fromEPOS $ readEPOS c
+--     let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
+--                    (concat (fromMaybe [[]] (runs w (relatedByList wnForm (search a wnPos AllSenses)))))
+--     if (null result) then return "Nothing!" else return result
+
+-- Wordnet search.
+wnRelated :: String -> String -> String -> String -> String -> Net ()
+wnRelated a b [] _ _  = return () :: Net ()
+wnRelated a b c  d [] = do
     wnPos <- wnPartString a -- POS not given so use most common.
-    wnRelated a b wnPos
-wnRelated a [] _  = wnRelated a "Hypernym" []
-wnRelated a b c = do
+    wnRelated a b c d wnPos
+wnRelated a b c [] _  = wnRelated a b c "Hypernym" []
+wnRelated a b c d  e  = do
     h <- asks socket
     w <- asks wne
-    let wnForm = readForm b
-    let wnPos = fromEPOS $ readEPOS c
-    let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
-                   (concat (fromMaybe [[]] (runs w (relatedByList wnForm (search a wnPos AllSenses)))))
-    if (null result) then return "Nothing!" else return result
--- map (++ "\r\n") (map (unwords) a)
+    let wnForm = readForm d
+    let wnPos = fromEPOS $ readEPOS e
+    let result = fromMaybe [[]] (runs w (relatedByList wnForm (search c wnPos AllSenses)))
+    let l = length result
+    if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else wnRelated' a b l l result
+  where
+    wnRelated' _ _ _ _ [] = return ()
+    wnRelated' a b c d (x:xs) = do
+      if (null x) then wnRelated' a b (c-1) d xs
+      else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset) x) >>= replyMsg a b
+      wnRelated' a b (c-1) d xs
 
+-- Wordnet search.
 wnClosure :: String -> String -> String -> Net String
 wnClosure [] _ _  = return [] :: Net String
 wnClosure a  b [] = do
@@ -255,6 +283,7 @@ wnClosure a b c = do
                    (take 10 (flatten (runs w (closureOn wnForm (head (search a wnPos 1))))))
     if (null result) then return "Nothing!" else return result
 
+-- Wordnet search.
 wnGloss :: String -> String -> String -> String -> Net ()
 wnGloss _ _ [] _ = return () :: Net ()
 wnGloss a b c [] = do
