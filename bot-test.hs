@@ -1,6 +1,6 @@
 import Data.List
 import Data.Maybe
-import Data.Tree (flatten)
+import Data.Tree
 import Network
 --import System.CPUTime
 import System.Directory
@@ -140,9 +140,9 @@ evalCmd a b (x:xs) | x == "!related" =
       _ -> replyMsg a b "Usage: !related word [form] [part-of-speech]"
 evalCmd a b (x:xs) | x == "!closure" =
     case (length xs) of
-      3 -> wnClosure (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
-      2 -> wnClosure (xs!!0) (xs!!1) []      >>= replyMsg a b
-      1 -> wnClosure (xs!!0) []      []      >>= replyMsg a b
+      3 -> wnClosure a b (xs!!0) (xs!!1) (xs!!2)
+      2 -> wnClosure a b (xs!!0) (xs!!1) []
+      1 -> wnClosure a b (xs!!0) []      []
       _ -> replyMsg a b "Usage: !closure word [form] [part-of-speech]"
 evalCmd a b (x:xs) | x == "!gloss"   =
     case (length xs) of
@@ -244,22 +244,27 @@ wnRelated a b c d  e  = do
       wnRelated' a b xs
 
 -- Wordnet search.
-wnClosure :: String -> String -> String -> Net String
-wnClosure [] _ _  = return [] :: Net String
-wnClosure a  b [] = do
-    wnPos <- wnPartString a -- POS not given so use most common.
-    wnClosure a b wnPos
-wnClosure a [] _  = wnClosure a "Hypernym" []
-wnClosure a b c = do
+wnClosure :: String -> String -> String -> String -> String -> Net ()
+wnClosure a b [] _ _  = return () :: Net ()
+wnClosure a b c  d [] = do
+    wnPos <- wnPartString c -- POS not given so use most common.
+    wnClosure a b c d wnPos
+wnClosure a b c [] _  = wnClosure a b c "Hypernym" []
+wnClosure a b c d  e  = do
     h <- asks socket
     w <- asks wne
-    let wnForm = readForm b
-    let wnPos = fromEPOS $ readEPOS c
-    -- let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
-    --                (concat (take 10 (map flatten (fromMaybe [] (runs w (closureOnList wnForm (search a wnPos AllSenses)))))))
-    let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
-                   (take 10 (flatten (runs w (closureOn wnForm (head (search a wnPos 1))))))
-    if (null result) then return "Nothing!" else return result
+    let wnForm = readForm d
+    let wnPos = fromEPOS $ readEPOS e
+    let result1 = runs w (closureOnList wnForm (search c wnPos AllSenses)) -- [Maybe (Tree SearchResult)]
+    if (null result1) then return "Nothing!" >>= replyMsg a b else wnClosure' 0 a b result1
+  where
+    wnClosure' _  _ _ []     = return ()
+    wnClosure' 20 _ _ _      = return ()
+    wnClosure' a  b c (x:xs) = do
+      if isNothing x then return ()
+      else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
+             (flatten (fromJust x))) >>= replyMsg b c
+      wnClosure' a b c xs
 
 -- Wordnet search.
 wnGloss :: String -> String -> String -> String -> Net ()
