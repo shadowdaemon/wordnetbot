@@ -261,7 +261,7 @@ wnRelated a b c d  e  = do
   where
     wnRelated' _ _ _ _ [] = return ()
     wnRelated' a b c d (x:xs) = do
-      if (null x) then wnRelated' a b (c-1) d xs
+      if (null x) then return ()
       else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset) x) >>= replyMsg a b
       wnRelated' a b (c-1) d xs
 
