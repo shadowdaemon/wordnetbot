@@ -235,14 +235,13 @@ wnRelated a b c d  e  = do
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
     let result = fromMaybe [[]] (runs w (relatedByList wnForm (search c wnPos AllSenses)))
-    let l = length result
-    if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else wnRelated' a b l l result
+    if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else wnRelated' a b result
   where
-    wnRelated' _ _ _ _ [] = return ()
-    wnRelated' a b c d (x:xs) = do
+    wnRelated' _ _ []     = return ()
+    wnRelated' a b (x:xs) = do
       if (null x) then return ()
       else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset) x) >>= replyMsg a b
-      wnRelated' a b (c-1) d xs
+      wnRelated' a b xs
 
 -- Wordnet search.
 wnClosure :: String -> String -> String -> Net String
@@ -273,10 +272,9 @@ wnGloss a b c d = do
     w <- asks wne
     let wnPos = fromEPOS $ readEPOS d
     let result = map (getGloss . getSynset) (runs w (search c wnPos AllSenses))
-    let l = length result
-    if (null result) then return "Nothing!" >>= chanMsg chan else wnGloss' a b l l result
+    if (null result) then return "Nothing!" >>= chanMsg chan else wnGloss' a b result
   where
-    wnGloss' _ _ _ _ [] = return ()
-    wnGloss' a b c d (x:xs) = do
+    wnGloss' _ _ []     = return ()
+    wnGloss' a b (x:xs) = do
       return x >>= replyMsg a b
-      wnGloss' a b (c-1) d xs
+      wnGloss' a b xs

@@ -232,6 +232,12 @@ closureOnList :: WN (Form -> [SearchResult] -> Maybe [Tree SearchResult])
 closureOnList form [] = Nothing
 closureOnList form sr = Just (map (closure (relatedBy form)) sr)
 
+-- closureOnList form [] = Nothing
+-- closureOnList form sr = closureOnList' form sr
+--   where
+--     closureOnList' a []     = Nothing
+--     closureOnList' a (x:xs) = Just (closure (relatedBy a) x) : closureOnList' a xs
+
 -- | A simple bag class for our 'meet' implementation.
 class Bag b a where
   emptyBag :: b a
