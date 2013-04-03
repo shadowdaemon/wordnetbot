@@ -155,9 +155,14 @@ evalCmd a b (x:xs) | x == "!gloss"   =
       2 -> wnGloss a b (xs!!0) (xs!!1)
       1 -> wnGloss a b (xs!!0) []
       _ -> replyMsg a b "Usage: !gloss word [part-of-speech]"
+evalCmd a b (x:xs) | x == "!meet"    =
+    case (length xs) of
+      3 -> wnMeet a b (xs!!0) (xs!!1) (xs!!2)
+      2 -> wnMeet a b (xs!!0) (xs!!1) []
+      _ -> replyMsg a b "Usage: !meet word word [part-of-speech]"
 evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
 evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
-evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !related !closure !gloss !forms !parts !quit"
+evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !quit"
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -280,8 +285,8 @@ wnClosure a b c d  e  = do
     w <- asks wne
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
-    let result1 = runs w (closureOnList wnForm (search (wnFixWord c) wnPos AllSenses)) -- [Maybe (Tree SearchResult)]
-    if (null result1) then return "Nothing!" >>= replyMsg a b else wnClosure' 0 a b result1
+    let result = runs w (closureOnList wnForm (search (wnFixWord c) wnPos AllSenses)) -- [Maybe (Tree SearchResult)]
+    if (null result) then return "Nothing!" >>= replyMsg a b else wnClosure' 0 a b result
   where
     wnClosure' _  _ _ []     = return ()
     wnClosure' 20 _ _ _      = return () -- "20" here is a recursion limit (just in case).
@@ -309,11 +314,18 @@ wnGloss a b c d = do
       return x >>= replyMsg a b
       wnGloss' a b xs
 
--- wnMeet a b c d [] = do
-
--- wnMeet a b c d e  = do
---     h <- asks socket
---     w <- asks wne
---     let wnPos = fromEPOS $ readEPOS e
---     let result1 = (runs w (search (wnFixWord c) wnPos AllSenses))
-
+-- Wordnet search.
+wnMeet :: String -> String -> String -> String -> String -> Net ()
+wnMeet _ _ [] _ _ = return () :: Net ()
+wnMeet _ _ _ [] _ = return () :: Net ()
+wnMeet a b c d [] = do
+    wnPos <- wnPartString (wnFixWord c) -- POS not given so use most common.
+    wnMeet a b c d wnPos
+wnMeet a b c d e  = do
+    h <- asks socket
+    w <- asks wne
+    let wnPos = fromEPOS $ readEPOS e
+    let result1 = (runs w (head $ search (wnFixWord c) wnPos 1))
+    let result2 = (runs w (head $ search (wnFixWord d) wnPos 1))
+    let result = (runs w (meet emptyQueue result1 result2))
+    if (isNothing result) then return "Nothing!" >>= replyMsg a b else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ getWords $ getSynset (fromJust result)) >>= replyMsg a b
