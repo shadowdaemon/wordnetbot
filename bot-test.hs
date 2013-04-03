@@ -188,11 +188,9 @@ replace a b (x:xs)
 joinWords :: Char -> [String] -> [String]
 joinWords _ []     = []
 joinWords a (x:xs)
-    | (head x) == a   = unwords (x : (take (num + 1) xs)) : joinWords a (drop (num + 1) xs)
+    | (head x) == a   = unwords (x : (take num xs)) : joinWords a (drop num xs)
     | otherwise       = x : joinWords a xs
-  where num = fromMaybe 0 (elemIndex a $ map last xs)
-
---joinWords (x:xs) = x:[] ++ xs
+  where num = (fromMaybe 0 (elemIndex a $ map last xs)) + 1
 
 -- Try to determine most common POS for word.
 wnPartString :: String -> Net String
