@@ -292,7 +292,7 @@ wnClosure a b c d  e  = do
     wnClosure' 20 _ _ _      = return () -- "20" here is a recursion limit (just in case).
     wnClosure' a  b c (x:xs) = do
       if isNothing x then return ()
-      else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
+      else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
              (flatten (fromJust x))) >>= replyMsg b c
       wnClosure' a b c xs
 
