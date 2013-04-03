@@ -65,18 +65,18 @@ instance Ix EPOS where
 
 
 readEPOS :: String -> EPOS
-readEPOS a | map toLower a == "n"           = POS Noun
-readEPOS a | map toLower a == "v"           = POS Verb
-readEPOS a | map toLower a == "a"           = POS Adj
-readEPOS a | map toLower a == "r"           = POS Adv
-readEPOS a | map toLower a == "s"           = Satellite
-readEPOS a | map toLower a == "noun"        = POS Noun
-readEPOS a | map toLower a == "verb"        = POS Verb
-readEPOS a | map toLower a == "adj"         = POS Adj
-readEPOS a | map toLower a == "adv"         = POS Adv
-readEPOS a | map toLower a == "adjective"   = POS Adj
-readEPOS a | map toLower a == "adverb"      = POS Adv
-readEPOS a | map toLower a == "satellite"   = Satellite
+readEPOS a | (map toLower a) == "n"           = POS Noun
+readEPOS a | (map toLower a) == "v"           = POS Verb
+readEPOS a | (map toLower a) == "a"           = POS Adj
+readEPOS a | (map toLower a) == "r"           = POS Adv
+readEPOS a | (map toLower a) == "s"           = Satellite
+readEPOS a | (map toLower a) == "noun"        = POS Noun
+readEPOS a | (map toLower a) == "verb"        = POS Verb
+readEPOS a | (map toLower a) == "adj"         = POS Adj
+readEPOS a | (map toLower a) == "adv"         = POS Adv
+readEPOS a | (map toLower a) == "adjective"   = POS Adj
+readEPOS a | (map toLower a) == "adverb"      = POS Adv
+readEPOS a | (map toLower a) == "satellite"   = Satellite
 readEPOS _                                  = UnknownEPos
 
 data WordNetEnv =
@@ -181,37 +181,37 @@ data Form = Antonym | Hypernym | Hyponym | Entailment | Similar
 allForm = [Antonym ..]
 
 readForm :: String -> Form
-readForm a | map toLower a == "antonym"         = Antonym
-readForm a | map toLower a == "hypernym"        = Hypernym
-readForm a | map toLower a == "hyponym"         = Hyponym
-readForm a | map toLower a == "entailment"      = Entailment
-readForm a | map toLower a == "similar"         = Similar
-readForm a | map toLower a == "ismember"        = IsMember
-readForm a | map toLower a == "isstuff"         = IsStuff
-readForm a | map toLower a == "ispart"          = IsPart
-readForm a | map toLower a == "hasmember"       = HasMember
-readForm a | map toLower a == "hasstuff"        = HasStuff
-readForm a | map toLower a == "haspart"         = HasPart
-readForm a | map toLower a == "meronym"         = Meronym
-readForm a | map toLower a == "holonym"         = Holonym
-readForm a | map toLower a == "causeto"         = CauseTo
-readForm a | map toLower a == "ppl"             = PPL
-readForm a | map toLower a == "seealso"         = SeeAlso
-readForm a | map toLower a == "attribute"       = Attribute
-readForm a | map toLower a == "verbgroup"       = VerbGroup
-readForm a | map toLower a == "derivation"      = Derivation
-readForm a | map toLower a == "classification"  = Classification
-readForm a | map toLower a == "class"           = Class
-readForm a | map toLower a == "nominalization"  = Nominalization
-readForm a | map toLower a == "syns"            = Syns
-readForm a | map toLower a == "freq"            = Freq
-readForm a | map toLower a == "frames"          = Frames
-readForm a | map toLower a == "coords"          = Coords
-readForm a | map toLower a == "relatives"       = Relatives
-readForm a | map toLower a == "hmeronym"        = HMeronym
-readForm a | map toLower a == "hholonym"        = HHolonym
-readForm a | map toLower a == "wngrep"          = WNGrep
-readForm a | map toLower a == "overviewform"    = OverviewForm
+readForm a | (map toLower a) == "antonym"         = Antonym
+readForm a | (map toLower a) == "hypernym"        = Hypernym
+readForm a | (map toLower a) == "hyponym"         = Hyponym
+readForm a | (map toLower a) == "entailment"      = Entailment
+readForm a | (map toLower a) == "similar"         = Similar
+readForm a | (map toLower a) == "ismember"        = IsMember
+readForm a | (map toLower a) == "isstuff"         = IsStuff
+readForm a | (map toLower a) == "ispart"          = IsPart
+readForm a | (map toLower a) == "hasmember"       = HasMember
+readForm a | (map toLower a) == "hasstuff"        = HasStuff
+readForm a | (map toLower a) == "haspart"         = HasPart
+readForm a | (map toLower a) == "meronym"         = Meronym
+readForm a | (map toLower a) == "holonym"         = Holonym
+readForm a | (map toLower a) == "causeto"         = CauseTo
+readForm a | (map toLower a) == "ppl"             = PPL
+readForm a | (map toLower a) == "seealso"         = SeeAlso
+readForm a | (map toLower a) == "attribute"       = Attribute
+readForm a | (map toLower a) == "verbgroup"       = VerbGroup
+readForm a | (map toLower a) == "derivation"      = Derivation
+readForm a | (map toLower a) == "classification"  = Classification
+readForm a | (map toLower a) == "class"           = Class
+readForm a | (map toLower a) == "nominalization"  = Nominalization
+readForm a | (map toLower a) == "syns"            = Syns
+readForm a | (map toLower a) == "freq"            = Freq
+readForm a | (map toLower a) == "frames"          = Frames
+readForm a | (map toLower a) == "coords"          = Coords
+readForm a | (map toLower a) == "relatives"       = Relatives
+readForm a | (map toLower a) == "hmeronym"        = HMeronym
+readForm a | (map toLower a) == "hholonym"        = HHolonym
+readForm a | (map toLower a) == "wngrep"          = WNGrep
+readForm a | (map toLower a) == "overviewform"    = OverviewForm
 readForm _                                      = Unknown
 
 -- | A 'SenseType' is a way of controlling search.  Either you specify

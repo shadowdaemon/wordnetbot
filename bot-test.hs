@@ -144,9 +144,19 @@ evalCmd a b (x:xs) | x == "!closure"    =
       2 -> wnClosure (xs!!0) (xs!!1) []      >>= replyMsg a b
       1 -> wnClosure (xs!!0) []      []      >>= replyMsg a b
       _ -> replyMsg a b "Usage: !closure word [form] [part-of-speech]"
+-- evalCmd a b (x:xs) | x == "!gloss"      =
+--     case (length xs) of
+--       2 -> wnGlossBoring (xs!!0) (xs!!1)    >>= replyMsg a b
+--       1 -> wnGlossBoring (xs!!0) []         >>= replyMsg a b
+--       _ -> replyMsg a b "Usage: !gloss word [part-of-speech]"
+evalCmd a b (x:xs) | x == "!gloss"      =
+    case (length xs) of
+      2 -> wnGloss a b (xs!!0) (xs!!1)
+      1 -> wnGloss a b (xs!!0) []
+      _ -> replyMsg a b "Usage: !gloss word [part-of-speech]"
 evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
 evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
-evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !related !forms !parts !quit"
+evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !related !closure !gloss !forms !parts !quit"
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -231,6 +241,7 @@ wnRelated a b c = do
     let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
                    (concat (fromMaybe [[]] (runs w (relatedByList wnForm (search a wnPos AllSenses)))))
     if (null result) then return "Nothing!" else return result
+-- map (++ "\r\n") (map (unwords) a)
 
 wnClosure :: String -> String -> String -> Net String
 wnClosure [] _ _  = return [] :: Net String
@@ -243,9 +254,43 @@ wnClosure a b c = do
     w <- asks wne
     let wnForm = readForm b
     let wnPos = fromEPOS $ readEPOS c
-    let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
-                   (concat (map flatten (fromMaybe [] (runs w (closureOnList wnForm (search a wnPos 1))))))
+    -- let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
+    --                (concat (take 10 (map flatten (fromMaybe [] (runs w (closureOnList wnForm (search a wnPos AllSenses)))))))
+    let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
+                   (take 10 (flatten (runs w (closureOn wnForm (head (search a wnPos 1))))))
     if (null result) then return "Nothing!" else return result
+
+-- wnGlossBoring :: String -> String -> Net String
+-- wnGlossBoring [] _ = return [] :: Net String
+-- wnGlossBoring a [] = do
+--     wnPos <- wnPartString a -- POS not given so use most common.
+--     wnGlossBoring a wnPos
+-- wnGlossBoring a  b = do
+--     h <- asks socket
+--     w <- asks wne
+--     let wnPos = fromEPOS $ readEPOS b
+--     let result = head $ map (getGloss . getSynset) (runs w (search a wnPos AllSenses))
+--     if (null result) then return "Nothing!" else return result
+
+wnGloss :: String -> String -> String -> String -> Net ()
+wnGloss _ _ [] _ = return () :: Net ()
+wnGloss a b c [] = do
+    wnPos <- wnPartString a -- POS not given so use most common.
+    wnGloss a b c wnPos
+wnGloss a b c d = do
+    h <- asks socket
+    w <- asks wne
+    let wnPos = fromEPOS $ readEPOS d
+    let result = map (getGloss . getSynset) (runs w (search c wnPos AllSenses))
+    let l = length result
+    if (null result) then return "Nothing!" >>= chanMsg chan else wnGloss' a b l l result
+  where
+    wnGloss' _ _ 0 _ _  = return ()
+    wnGloss' _ _ _ _ [] = return ()
+    wnGloss' a b c d (x:xs) = do
+      return x >>= replyMsg a b
+      wnGloss' a b (c-1) d xs
+
 
 
 
