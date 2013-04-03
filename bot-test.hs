@@ -111,9 +111,8 @@ processLine :: [String] -> Net ()
 processLine a
     | length a == 0     = return ()
     | length msg' == 0  = return () -- Ignore because not PRIVMSG.
-    | chan' == nick     = reply [] who' msg' -- Respond to PM.
-    -- | chan' == nick     = if (head $ head msg') == '!' then evalCmd chan' who' msg' -- Evaluate command (broken).
-    --                       else reply [] who' msg' -- Respond to PM.
+    | chan' == nick     = if (head $ head msg') == '!' then evalCmd who' who' msg' -- Evaluate command (the double "who" is significant).
+                          else reply [] who' msg' -- Respond to PM.
     | spokenTo msg'     = if (head $ head $ tail msg') == '!'
                           then evalCmd chan' who' (joinWords '"' (tail msg')) -- Evaluate command.
                           else reply chan' who' (tail msg') -- Respond upon being addressed.
