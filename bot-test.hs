@@ -133,11 +133,6 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in c
 evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"    = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
 evalCmd a b (x:xs) | x == "!related" =
-    -- case (length xs) of
-    --   3 -> wnRelated (xs!!0) (xs!!1) (xs!!2) >>= replyMsg a b
-    --   2 -> wnRelated (xs!!0) (xs!!1) []      >>= replyMsg a b
-    --   1 -> wnRelated (xs!!0) []      []      >>= replyMsg a b
-    --   _ -> replyMsg a b "Usage: !related word [form] [part-of-speech]"
     case (length xs) of
       3 -> wnRelated a b (xs!!0) (xs!!1) (xs!!2)
       2 -> wnRelated a b (xs!!0) (xs!!1) []
@@ -228,22 +223,6 @@ wnPartPOS a = do
       | otherwise                               = Adj
 
 -- Wordnet search.
--- wnRelated2 :: String -> String -> String -> Net String
--- wnRelated2 [] _ _  = return [] :: Net String
--- wnRelated2 a  b [] = do
---     wnPos <- wnPartString a -- POS not given so use most common.
---     wnRelated2 a b wnPos
--- wnRelated2 a [] _  = wnRelated2 a "Hypernym" []
--- wnRelated2 a b c = do
---     h <- asks socket
---     w <- asks wne
---     let wnForm = readForm b
---     let wnPos = fromEPOS $ readEPOS c
---     let result = replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
---                    (concat (fromMaybe [[]] (runs w (relatedByList wnForm (search a wnPos AllSenses)))))
---     if (null result) then return "Nothing!" else return result
-
--- Wordnet search.
 wnRelated :: String -> String -> String -> String -> String -> Net ()
 wnRelated a b [] _ _  = return () :: Net ()
 wnRelated a b c  d [] = do
@@ -297,105 +276,7 @@ wnGloss a b c d = do
     let l = length result
     if (null result) then return "Nothing!" >>= chanMsg chan else wnGloss' a b l l result
   where
-    --wnGloss' _ _ 0 _ _  = return ()
     wnGloss' _ _ _ _ [] = return ()
     wnGloss' a b c d (x:xs) = do
       return x >>= replyMsg a b
       wnGloss' a b (c-1) d xs
-
-
-
-
-{- TESTING -}
-
-
--- wnReplaceTest1 :: String -> String
--- wnReplaceTest1 a = do
---     w <- asks wne
---     wnPos <- wnTypePOS a
-
-{-
-wnSearchTest1 :: String -> Net b
-wnSearchTest1 a = do
-    h <- asks socket
-    w <- asks wne
-    result1 <- io $ return $ runs w (search a Noun AllSenses)
-    result2 <- io $ return $ runs w (search a Verb AllSenses)
-    result3 <- io $ return $ runs w (search a Adj AllSenses)
-    result4 <- io $ return $ runs w (search a Adv AllSenses)
-    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
-
-wnSearchTest2 :: String -> Net b
-wnSearchTest2 a = do
-    h <- asks socket
-    w <- asks wne
-    wnPos <- wnTypePOS a
-    result <- io $ return $ runs w (search a wnPos 1)
-    io $ hPrintf h "PRIVMSG %s :" chan; io $ hPrint h result; io $ hPrintf h "\r\n"
-
-wnGetWordsTest :: String -> Net String
-wnGetWordsTest a = do
-    w <- asks wne
-    wnPos <- wnTypePOS a
-    return $ replace '_' ' ' $ unwords $ (nub $ concat $ map (getWords . getSynset) (runs w (search a wnPos AllSenses))) \\ (a : [])
-
-wnSearchHypernymTest11 :: String -> Net b
-wnSearchHypernymTest11 a = do
-    h <- asks socket
-    w <- asks wne
-    result1 <- io $ return $ runs w (relatedByList Hypernym (search a Noun AllSenses))
-    result2 <- io $ return $ runs w (relatedByList Hypernym (search a Verb AllSenses))
-    result3 <- io $ return $ runs w (relatedByList Hypernym (search a Adj AllSenses))
-    result4 <- io $ return $ runs w (relatedByList Hypernym (search a Adv AllSenses))
-    -- Spams IRC!
-    -- io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
-    -- io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
-    -- io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
-    -- io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
-    io $ printf "PRIVMSG %s :Noun -> " chan; io $ print result1; io $ printf "\r\n"
-    io $ printf "PRIVMSG %s :Verb -> " chan; io $ print result2; io $ printf "\r\n"
-    io $ printf "PRIVMSG %s :Adj -> " chan; io $ print result3; io $ printf "\r\n"
-    io $ printf "PRIVMSG %s :Adv -> " chan; io $ print result4; io $ printf "\r\n"
-
-wnSearchHypernymTest2 :: String -> Net b
-wnSearchHypernymTest2 a = do
-    h <- asks socket
-    w <- asks wne
-    result1 <- io $ return $ runs w (closureOnList Hypernym (search a Noun AllSenses))
-    result2 <- io $ return $ runs w (closureOnList Hypernym (search a Verb AllSenses))
-    result3 <- io $ return $ runs w (closureOnList Hypernym (search a Adj AllSenses))
-    result4 <- io $ return $ runs w (closureOnList Hypernym (search a Adv AllSenses))
-    -- Spams IRC!
-    -- io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
-    -- io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
-    -- io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
-    -- io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
-    io $ printf "PRIVMSG %s :Noun -> " chan; io $ print result1; io $ printf "\r\n"
-    io $ printf "PRIVMSG %s :Verb -> " chan; io $ print result2; io $ printf "\r\n"
-    io $ printf "PRIVMSG %s :Adj -> " chan; io $ print result3; io $ printf "\r\n"
-    io $ printf "PRIVMSG %s :Adv -> " chan; io $ print result4; io $ printf "\r\n"
-
-wnOverviewTest :: String -> Net b
-wnOverviewTest a = do
-    h <- asks socket
-    w <- asks wne
-    result <- io $ return $ runs w (getOverview a)
-    io $ hPrintf h "PRIVMSG %s :" chan; io $ hPrint h result; io $ hPrintf h "\r\n"
-
-wnWordTypeTest :: String -> Net b
-wnWordTypeTest a = do
-    h <- asks socket
-    w <- asks wne
-    result1 <- io $ (getIndexString w a Noun)
-    result2 <- io $ (getIndexString w a Verb)
-    result3 <- io $ (getIndexString w a Adj)
-    result4 <- io $ (getIndexString w a Adv)
-    io $ hPrintf h "PRIVMSG %s :Noun -> " chan; io $ hPrint h result1; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Verb -> " chan; io $ hPrint h result2; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adj -> " chan; io $ hPrint h result3; io $ hPrintf h "\r\n"
-    io $ hPrintf h "PRIVMSG %s :Adv -> " chan; io $ hPrint h result4; io $ hPrintf h "\r\n"
-
--}
