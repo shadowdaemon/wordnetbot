@@ -2,6 +2,7 @@ import Data.List
 import Data.Maybe
 import Data.Tree
 import Network
+--import System.Environment (getArgs, getProgName)
 --import System.CPUTime
 import System.Directory
 import System.IO
@@ -36,6 +37,10 @@ main = bracket connect disconnect loop
   where
     disconnect = do hClose . socket ; closeWordNet . wne
     loop st    = catchIOError (runReaderT run st) (const $ return ())
+
+-- cmdline = do
+--     args <- getArgs
+--     prog <- getProgName
 
 -- Connect to the server and return the initial bot state.  Initialize WordNet.
 connect :: IO Bot
@@ -194,7 +199,7 @@ replace a b (x:xs)
 
 -- Join list items together if quoted.
 joinWords :: Char -> [String] -> [String]
-joinWords _ []     = []
+joinWords _ [] = []
 joinWords a (x:xs)
     | (head x) == a   = unwords (x : (take num xs)) : joinWords a (drop num xs)
     | otherwise       = x : joinWords a xs
@@ -246,7 +251,7 @@ wnPartPOS a = do
 wnRelated :: String -> String -> String -> String -> String -> Net ()
 wnRelated a b [] _ _  = return () :: Net ()
 wnRelated a b c  d [] = do
-    wnPos <- wnPartString a -- POS not given so use most common.
+    wnPos <- wnPartString (wnFixWord c) -- POS not given so use most common.
     wnRelated a b c d wnPos
 wnRelated a b c [] _  = wnRelated a b c "Hypernym" []
 wnRelated a b c d  e  = do
@@ -267,7 +272,7 @@ wnRelated a b c d  e  = do
 wnClosure :: String -> String -> String -> String -> String -> Net ()
 wnClosure a b [] _ _  = return () :: Net ()
 wnClosure a b c  d [] = do
-    wnPos <- wnPartString c -- POS not given so use most common.
+    wnPos <- wnPartString (wnFixWord c) -- POS not given so use most common.
     wnClosure a b c d wnPos
 wnClosure a b c [] _  = wnClosure a b c "Hypernym" []
 wnClosure a b c d  e  = do
@@ -290,7 +295,7 @@ wnClosure a b c d  e  = do
 wnGloss :: String -> String -> String -> String -> Net ()
 wnGloss _ _ [] _ = return () :: Net ()
 wnGloss a b c [] = do
-    wnPos <- wnPartString a -- POS not given so use most common.
+    wnPos <- wnPartString (wnFixWord c) -- POS not given so use most common.
     wnGloss a b c wnPos
 wnGloss a b c d = do
     h <- asks socket
@@ -303,3 +308,12 @@ wnGloss a b c d = do
     wnGloss' a b (x:xs) = do
       return x >>= replyMsg a b
       wnGloss' a b xs
+
+-- wnMeet a b c d [] = do
+
+-- wnMeet a b c d e  = do
+--     h <- asks socket
+--     w <- asks wne
+--     let wnPos = fromEPOS $ readEPOS e
+--     let result1 = (runs w (search (wnFixWord c) wnPos AllSenses))
+
