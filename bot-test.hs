@@ -109,7 +109,8 @@ processLine a
     | chan' == nick     = reply [] who' msg' -- Respond to PM.
     -- | chan' == nick     = if (head $ head msg') == '!' then evalCmd chan' who' msg' -- Evaluate command (broken).
     --                       else reply [] who' msg' -- Respond to PM.
-    | spokenTo msg'     = if (head $ head $ tail msg') == '!' then evalCmd chan' who' (tail msg') -- Evaluate command.
+    | spokenTo msg'     = if (head $ head $ tail msg') == '!'
+                          then evalCmd chan' who' (joinWords '"' (tail msg')) -- Evaluate command.
                           else reply chan' who' (tail msg') -- Respond upon being addressed.
     | otherwise         = return ()
     -- | otherwise         = processMsg chan' who' msg' -- Process message.
@@ -177,6 +178,13 @@ write s t = do
 io :: IO a -> Net a
 io = liftIO
 
+-- Strip characters from string.
+strip :: Eq a => a -> [a] -> [a]
+strip _ [] = []
+strip a (x:xs)
+    | x == a    = strip a xs
+    | otherwise = x : strip a xs
+
 -- Replace items in list.
 replace :: Eq a => a -> a -> [a] -> [a]
 replace _ _ [] = []
@@ -191,6 +199,10 @@ joinWords a (x:xs)
     | (head x) == a   = unwords (x : (take num xs)) : joinWords a (drop num xs)
     | otherwise       = x : joinWords a xs
   where num = (fromMaybe 0 (elemIndex a $ map last xs)) + 1
+
+-- Fix search words for Wordnet.
+wnFixWord :: String -> String
+wnFixWord = strip '"' . replace ' ' '_'
 
 -- Try to determine most common POS for word.
 wnPartString :: String -> Net String
@@ -242,7 +254,7 @@ wnRelated a b c d  e  = do
     w <- asks wne
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
-    let result = fromMaybe [[]] (runs w (relatedByList wnForm (search c wnPos AllSenses)))
+    let result = fromMaybe [[]] (runs w (relatedByList wnForm (search (wnFixWord c) wnPos AllSenses)))
     if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else wnRelated' a b result
   where
     wnRelated' _ _ []     = return ()
@@ -263,11 +275,11 @@ wnClosure a b c d  e  = do
     w <- asks wne
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
-    let result1 = runs w (closureOnList wnForm (search c wnPos AllSenses)) -- [Maybe (Tree SearchResult)]
+    let result1 = runs w (closureOnList wnForm (search (wnFixWord c) wnPos AllSenses)) -- [Maybe (Tree SearchResult)]
     if (null result1) then return "Nothing!" >>= replyMsg a b else wnClosure' 0 a b result1
   where
     wnClosure' _  _ _ []     = return ()
-    wnClosure' 20 _ _ _      = return ()
+    wnClosure' 20 _ _ _      = return () -- "20" here is a recursion limit (just in case).
     wnClosure' a  b c (x:xs) = do
       if isNothing x then return ()
       else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset)
@@ -284,7 +296,7 @@ wnGloss a b c d = do
     h <- asks socket
     w <- asks wne
     let wnPos = fromEPOS $ readEPOS d
-    let result = map (getGloss . getSynset) (runs w (search c wnPos AllSenses))
+    let result = map (getGloss . getSynset) (runs w (search (wnFixWord c) wnPos AllSenses))
     if (null result) then return "Nothing!" >>= chanMsg chan else wnGloss' a b result
   where
     wnGloss' _ _ []     = return ()
