@@ -20,12 +20,12 @@ import NLP.WordNet
 import NLP.WordNet.Prims (indexLookup, senseCount, getSynset, getWords, getGloss)
 import NLP.WordNet.PrimTypes
 
-wndir  = "/usr/share/wordnet/dict/"
-server = "irc.freenode.org"
-port   = 6667
-chan   = "#lolbots"
-nick   = "wordnetbot"
-owner  = "shadowdaemon"
+wndir     = "/usr/share/wordnet/dict/"
+server    = "irc.freenode.org"
+port      = 6667
+channel   = "#lolbots"
+nick      = "wordnetbot"
+owner     = "shadowdaemon"
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
@@ -62,7 +62,7 @@ run :: Net ()
 run = do
     write "NICK" nick
     write "USER" (nick++" 0 * :user")
-    write "JOIN" chan
+    write "JOIN" channel
     asks socket >>= listen
 
 -- Process each line from the server (this needs flood prevention somewhere).
@@ -307,7 +307,7 @@ wnGloss a b c d = do
     w <- asks wne
     let wnPos = fromEPOS $ readEPOS d
     let result = map (getGloss . getSynset) (runs w (search (wnFixWord c) wnPos AllSenses))
-    if (null result) then return "Nothing!" >>= chanMsg chan else wnGloss' a b result
+    if (null result) then return "Nothing!" >>= replyMsg a b else wnGloss' a b result
   where
     wnGloss' _ _ []     = return ()
     wnGloss' a b (x:xs) = do
