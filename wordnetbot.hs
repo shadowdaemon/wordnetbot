@@ -1,4 +1,5 @@
 import Data.Char (toUpper)
+import Data.IORef
 import Data.List
 import Data.Maybe
 import Data.Tree (flatten)
@@ -30,7 +31,7 @@ owner     = "shadowdaemon"
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
-data Bot = Bot { socket :: Handle, wne :: WordNetEnv }
+data Bot = Bot { socket :: Handle, wne :: WordNetEnv, maxchanlines :: IORef Int }
 
 -- Set up actions to run on start and end, and run the main loop.
 main :: IO ()
@@ -47,10 +48,11 @@ main = bracket connect disconnect loop
 connect :: IO Bot
 connect = notify $ do
     h <- connectTo server (PortNumber (fromIntegral port))
+    hSetBuffering h NoBuffering
     w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath) 
       (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
-    hSetBuffering h NoBuffering
-    return (Bot h w)
+    m <- newIORef 2
+    return (Bot h w m)
   where
     notify a = bracket_
         (printf "Connecting to %s ... " server >> hFlush stdout)
@@ -320,10 +322,13 @@ wnGloss a b c [] = do
     wnGloss a b c wnPos
 wnGloss a b c d = do
     w <- asks wne
+    m <- asks maxchanlines
+    mm <- return (readIORef m)
+    mmm <- io $ readIORef m
     let wnPos = fromEPOS $ readEPOS d
     let result = map (getGloss . getSynset) (runs w (search (wnFixWord c) wnPos AllSenses))
     if (null result) then return "Nothing!" >>= replyMsg a b else
-      if (length result) > 2 then wnGloss' b b result else wnGloss' a b result -- Redirect reply to prevent channel spam.
+      if (length result) > mmm then wnGloss' b b result else wnGloss' a b result -- Redirect reply to prevent channel spam.
   where
     wnGloss' _ _ []     = return ()
     wnGloss' a b (x:xs) = do
