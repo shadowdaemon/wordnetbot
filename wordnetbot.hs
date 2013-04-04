@@ -285,6 +285,7 @@ wnRelated a b c d  e  = do
     let result = fromMaybe [[]] (runs w (relatedByList wnForm (search (wnFixWord c) wnPos AllSenses)))
     if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else wnRelated' a b result
   where
+    wnRelated' a b c | (length c) > 2 = wnRelated' b b c
     wnRelated' _ _ []     = return ()
     wnRelated' a b (x:xs) = do
       if (null x) then return ()
