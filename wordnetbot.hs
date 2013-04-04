@@ -283,9 +283,9 @@ wnRelated a b c d  e  = do
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
     let result = fromMaybe [[]] (runs w (relatedByList wnForm (search (wnFixWord c) wnPos AllSenses)))
-    if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else wnRelated' a b result
+    if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else
+      if (length result) > 2 then wnRelated' b b result else wnRelated' a b result -- Redirect reply to prevent channel spam.
   where
-    wnRelated' a b c | (length c) > 2 = wnRelated' b b c
     wnRelated' _ _ []     = return ()
     wnRelated' a b (x:xs) = do
       if (null x) then return ()
@@ -304,7 +304,8 @@ wnClosure a b c d  e  = do
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
     let result = runs w (closureOnList wnForm (search (wnFixWord c) wnPos AllSenses)) -- [Maybe (Tree SearchResult)]
-    if (null result) then return "Nothing!" >>= replyMsg a b else wnClosure' 0 a b result
+    if (null result) then return "Nothing!" >>= replyMsg a b else
+      if (length result) > 2 then wnClosure' 0 b b result else wnClosure' 0 a b result -- Redirect reply to prevent channel spam.
   where
     wnClosure' _  _ _ []     = return ()
     wnClosure' 20 _ _ _      = return () -- "20" here is a recursion limit (just in case).
@@ -312,7 +313,7 @@ wnClosure a b c d  e  = do
       if isNothing x then return ()
       else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
              (flatten (fromJust x))) >>= replyMsg b c
-      wnClosure' a b c xs
+      wnClosure' (a+1) b c xs
 
 -- Wordnet search.
 wnGloss :: String -> String -> String -> String -> Net ()
@@ -324,7 +325,8 @@ wnGloss a b c d = do
     w <- asks wne
     let wnPos = fromEPOS $ readEPOS d
     let result = map (getGloss . getSynset) (runs w (search (wnFixWord c) wnPos AllSenses))
-    if (null result) then return "Nothing!" >>= replyMsg a b else wnGloss' a b result
+    if (null result) then return "Nothing!" >>= replyMsg a b else
+      if (length result) > 2 then wnGloss' b b result else wnGloss' a b result -- Redirect reply to prevent channel spam.
   where
     wnGloss' _ _ []     = return ()
     wnGloss' a b (x:xs) = do
@@ -341,7 +343,6 @@ wnMeet a b c d [] = do
 wnMeet a b c d e  = do
     w <- asks wne
     let wnPos = fromEPOS $ readEPOS e
-    let result1 = (runs w (head $ search (wnFixWord c) wnPos 1))
-    let result2 = (runs w (head $ search (wnFixWord d) wnPos 1))
-    let result = (runs w (meet emptyQueue result1 result2))
-    if (isNothing result) then return "Nothing!" >>= replyMsg a b else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ getWords $ getSynset (fromJust result)) >>= replyMsg a b
+    let result = runs w (meet emptyQueue (head $ search (wnFixWord c) wnPos 1) (head $ search (wnFixWord d) wnPos 1))
+    if (isNothing result) then return "Nothing!" >>= replyMsg a b else
+      return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ getWords $ getSynset (fromJust result)) >>= replyMsg a b
