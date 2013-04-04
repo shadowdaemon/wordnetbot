@@ -1,4 +1,4 @@
-import Data.Char (toUpper)
+import Data.Char (toLower)
 import Data.IORef
 import Data.List
 import Data.Maybe
@@ -78,11 +78,11 @@ joinChannel a (x:xs) = do
       joinChannel a xs
     else return ()
 
-readParam a | (map toUpper a) == "REJOINKICK"      = RejoinKick
-readParam a | (map toUpper a) == "REJOINTIMEOUT"   = RejoinTimeout
-readParam a | (map toUpper a) == "RUDE"            = Rude
-readParam a | (map toUpper a) == "OPCONTROL"       = OpControl
-readParam a | (map toUpper a) == "MAXCHANLINES"    = MaxChanLines
+readParam a | (map toLower a) == "rejoinkick"      = RejoinKick
+readParam a | (map toLower a) == "rejointimeout"   = RejoinTimeout
+readParam a | (map toLower a) == "rude"            = Rude
+readParam a | (map toLower a) == "opcontrol"       = OpControl
+readParam a | (map toLower a) == "maxchanlines"    = MaxChanLines
 readParam _                                        = UnknownParam
 
 -- Change bot operating parameters.
