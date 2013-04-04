@@ -31,7 +31,15 @@ owner     = "shadowdaemon"
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
-data Bot = Bot { socket :: Handle, wne :: WordNetEnv, maxchanlines :: IORef Int }
+data Bot = Bot {
+    socket :: Handle,
+    wne :: WordNetEnv,
+    rejoinkick :: IORef Int,
+    maxchanlines :: IORef Int
+    }
+
+-- Stuff for changing bot operating parameters.
+data Parameters = RejoinKick | RejoinTimeout | Rude | OpControl | MaxChanLines | UnknownParam
 
 -- Set up actions to run on start and end, and run the main loop.
 main :: IO ()
@@ -52,7 +60,8 @@ connect = notify $ do
     w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath) 
       (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
     m <- newIORef 2
-    return (Bot h w m)
+    rk <- newIORef 10
+    return (Bot h w m rk)
   where
     notify a = bracket_
         (printf "Connecting to %s ... " server >> hFlush stdout)
@@ -69,10 +78,22 @@ joinChannel a (x:xs) = do
       joinChannel a xs
     else return ()
 
+readParam a | (map toUpper a) == "REJOINKICK"      = RejoinKick
+readParam a | (map toUpper a) == "REJOINTIMEOUT"   = RejoinTimeout
+readParam a | (map toUpper a) == "RUDE"            = Rude
+readParam a | (map toUpper a) == "OPCONTROL"       = OpControl
+readParam a | (map toUpper a) == "MAXCHANLINES"    = MaxChanLines
+readParam _                                        = UnknownParam
+
 -- Change bot operating parameters.
-botParameter a b c = do
+changeParam a b = do
+    rk <- asks rejoinkick
     m <- asks maxchanlines
-    io $ writeIORef m (read c)
+    case (readParam a) of
+      -- Rude         -> io $ writeIORef r
+      -- OpControl    -> io $ writeIORef o
+      RejoinKick   -> io $ writeIORef rk (read b)
+      MaxChanLines -> io $ writeIORef m (read b)
 
 -- Join a channel, and start processing commands.
 run :: Net ()
@@ -156,7 +177,7 @@ evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"    = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
 evalCmd _ b (x:xs) | x == "!join"    = if b == owner then joinChannel "JOIN" xs else return ()
 evalCmd _ b (x:xs) | x == "!part"    = if b == owner then joinChannel "PART" xs else return ()
-evalCmd _ b (x:xs) | x == "!setp"    = if b == owner then botParameter "set" "maxchanlines" (xs!!0) else return ()
+evalCmd _ b (x:xs) | x == "!setp"    = if b == owner then changeParam "maxchanlines" (xs!!0) else return ()
 evalCmd a b (x:xs) | x == "!related" =
     case (length xs) of
       3 -> wnRelated a b (xs!!0) (xs!!1) (xs!!2)
@@ -182,7 +203,7 @@ evalCmd a b (x:xs) | x == "!meet"    =
 evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
 evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
 evalCmd a b (x:xs) | x == "!help"       =
-    if b == owner then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !join !part !quit"
+    if b == owner then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !setp !join !part !quit"
     else replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts"
 evalCmd _ _ _                           = return ()
 
