@@ -23,7 +23,7 @@ import NLP.WordNet.PrimTypes
 wndir     = "/usr/share/wordnet/dict/"
 server    = "irc.freenode.org"
 port      = 6667
-channel   = "#lolbots"
+channels  = ["#lolbots","#oszero"]
 nick      = "wordnetbot"
 owner     = "shadowdaemon"
 
@@ -56,13 +56,20 @@ connect = notify $ do
         (putStrLn "done.")
         a
 
+-- Join a list of channels.
+joinChannel :: [String] -> Net ()
+joinChannel []     = return () :: Net ()
+joinChannel (x:xs) = do
+    write "JOIN" x
+    joinChannel xs
+
 -- We're in the Net monad now, so we've connected successfully.
 -- Join a channel, and start processing commands.
 run :: Net ()
 run = do
     write "NICK" nick
     write "USER" (nick++" 0 * :user")
-    write "JOIN" channel
+    joinChannel channels
     asks socket >>= listen
 
 -- Process each line from the server (this needs flood prevention somewhere).
@@ -127,6 +134,7 @@ processLine a
 -- Reply to message.
 reply :: String -> String -> [String] -> Net ()
 reply [] who' msg = privMsg who' "Eh?" -- PM.
+--reply [] who' msg = replyMsg who' who' "Eh?" -- PM.
 reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  Channel talk.
 reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in channel.
 
@@ -137,6 +145,7 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in c
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"    = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
+evalCmd _ b (x:xs) | x == "!join"    = if b == owner then joinChannel xs else return ()
 evalCmd a b (x:xs) | x == "!related" =
     case (length xs) of
       3 -> wnRelated a b (xs!!0) (xs!!1) (xs!!2)
@@ -161,7 +170,9 @@ evalCmd a b (x:xs) | x == "!meet"    =
       _ -> replyMsg a b "Usage: !meet word word [part-of-speech]"
 evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
 evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
-evalCmd a b (x:xs) | x == "!help"       = replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !quit"
+evalCmd a b (x:xs) | x == "!help"       =
+    if b == owner then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !join !quit"
+    else replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts"
 evalCmd _ _ _                           = return ()
 
 -- Send a message to the channel.
@@ -171,6 +182,10 @@ chanMsg chan' msg = write "PRIVMSG" (chan' ++ " :" ++ msg)
 -- Send a reply message.
 replyMsg :: String -> String -> String -> Net ()
 replyMsg chan' nick' msg = write "PRIVMSG" (chan' ++ " :" ++ nick' ++ ": " ++ msg)
+-- replyMsg :: String -> String -> String -> Net ()
+-- replyMsg chan' nick' msg
+--     | chan' == nick'  = write "PRIVMSG" (nick' ++ ": " ++ msg) -- PM.
+--     | otherwise       = write "PRIVMSG" (chan' ++ " :" ++ nick' ++ ": " ++ msg)
 
 -- Send a private message.
 privMsg :: String -> String -> Net ()
@@ -259,7 +274,6 @@ wnRelated a b c  d [] = do
     wnRelated a b c d wnPos
 wnRelated a b c [] _  = wnRelated a b c "Hypernym" []
 wnRelated a b c d  e  = do
-    h <- asks socket
     w <- asks wne
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
@@ -280,7 +294,6 @@ wnClosure a b c  d [] = do
     wnClosure a b c d wnPos
 wnClosure a b c [] _  = wnClosure a b c "Hypernym" []
 wnClosure a b c d  e  = do
-    h <- asks socket
     w <- asks wne
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
@@ -302,7 +315,6 @@ wnGloss a b c [] = do
     wnPos <- wnPartString (wnFixWord c) -- POS not given so use most common.
     wnGloss a b c wnPos
 wnGloss a b c d = do
-    h <- asks socket
     w <- asks wne
     let wnPos = fromEPOS $ readEPOS d
     let result = map (getGloss . getSynset) (runs w (search (wnFixWord c) wnPos AllSenses))
@@ -321,7 +333,6 @@ wnMeet a b c d [] = do
     wnPos <- wnPartString (wnFixWord c) -- POS not given so use most common.
     wnMeet a b c d wnPos
 wnMeet a b c d e  = do
-    h <- asks socket
     w <- asks wne
     let wnPos = fromEPOS $ readEPOS e
     let result1 = (runs w (head $ search (wnFixWord c) wnPos 1))
