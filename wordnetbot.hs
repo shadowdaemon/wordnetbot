@@ -69,7 +69,11 @@ joinChannel a (x:xs) = do
       joinChannel a xs
     else return ()
 
--- We're in the Net monad now, so we've connected successfully.
+-- Change bot operating parameters.
+botParameter a b c = do
+    m <- asks maxchanlines
+    io $ writeIORef m (read c)
+
 -- Join a channel, and start processing commands.
 run :: Net ()
 run = do
@@ -152,6 +156,7 @@ evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"    = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
 evalCmd _ b (x:xs) | x == "!join"    = if b == owner then joinChannel "JOIN" xs else return ()
 evalCmd _ b (x:xs) | x == "!part"    = if b == owner then joinChannel "PART" xs else return ()
+evalCmd _ b (x:xs) | x == "!setp"    = if b == owner then botParameter "set" "maxchanlines" (xs!!0) else return ()
 evalCmd a b (x:xs) | x == "!related" =
     case (length xs) of
       3 -> wnRelated a b (xs!!0) (xs!!1) (xs!!2)
@@ -323,12 +328,11 @@ wnGloss a b c [] = do
 wnGloss a b c d = do
     w <- asks wne
     m <- asks maxchanlines
-    mm <- return (readIORef m)
-    mmm <- io $ readIORef m
+    mm <- io $ readIORef m
     let wnPos = fromEPOS $ readEPOS d
     let result = map (getGloss . getSynset) (runs w (search (wnFixWord c) wnPos AllSenses))
     if (null result) then return "Nothing!" >>= replyMsg a b else
-      if (length result) > mmm then wnGloss' b b result else wnGloss' a b result -- Redirect reply to prevent channel spam.
+      if (length result) > mm then wnGloss' b b result else wnGloss' a b result -- Redirect reply to prevent channel spam.
   where
     wnGloss' _ _ []     = return ()
     wnGloss' a b (x:xs) = do
