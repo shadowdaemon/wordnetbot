@@ -138,7 +138,6 @@ processLine a
 -- Reply to message.
 reply :: String -> String -> [String] -> Net ()
 reply [] who' msg = privMsg who' "Eh?" -- PM.
---reply [] who' msg = replyMsg who' who' "Eh?" -- PM.
 reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  Channel talk.
 reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in channel.
 
@@ -186,11 +185,9 @@ chanMsg chan' msg = write "PRIVMSG" (chan' ++ " :" ++ msg)
 
 -- Send a reply message.
 replyMsg :: String -> String -> String -> Net ()
-replyMsg chan' nick' msg = write "PRIVMSG" (chan' ++ " :" ++ nick' ++ ": " ++ msg)
--- replyMsg :: String -> String -> String -> Net ()
--- replyMsg chan' nick' msg
---     | chan' == nick'  = write "PRIVMSG" (nick' ++ ": " ++ msg) -- PM.
---     | otherwise       = write "PRIVMSG" (chan' ++ " :" ++ nick' ++ ": " ++ msg)
+replyMsg chan' nick' msg
+    | chan' == nick'  = write "PRIVMSG" (nick' ++ " :" ++ msg) -- PM.
+    | otherwise       = write "PRIVMSG" (chan' ++ " :" ++ nick' ++ ": " ++ msg)
 
 -- Send a private message.
 privMsg :: String -> String -> Net ()
