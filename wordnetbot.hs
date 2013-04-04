@@ -39,7 +39,26 @@ data Bot = Bot {
     }
 
 -- Stuff for changing bot operating parameters.
-data Parameters = RejoinKick | RejoinTimeout | Rude | OpControl | MaxChanLines | UnknownParam
+data Parameter = RejoinKick | RejoinTimeout | Rude | OpControl | MaxChanLines | UnknownParam
+    deriving (Eq, Ord, Show)
+
+allParams = [RejoinKick ..]
+
+instance Enum Parameter where
+    toEnum 1 = RejoinKick
+    toEnum 2 = RejoinTimeout
+    toEnum 3 = Rude
+    toEnum 4 = OpControl
+    toEnum 5 = MaxChanLines
+    toEnum 6 = UnknownParam
+    fromEnum RejoinKick     = 1
+    fromEnum RejoinTimeout  = 2
+    fromEnum Rude           = 3
+    fromEnum OpControl      = 4
+    fromEnum MaxChanLines   = 5
+    fromEnum UnknownParam   = 6
+    enumFrom i = enumFromTo i MaxChanLines
+    enumFromThen i j = enumFromThenTo i j MaxChanLines
 
 -- Set up actions to run on start and end, and run the main loop.
 main :: IO ()
@@ -78,6 +97,7 @@ joinChannel a (x:xs) = do
       joinChannel a xs
     else return ()
 
+readParam :: String -> Parameter
 readParam a | (map toLower a) == "rejoinkick"      = RejoinKick
 readParam a | (map toLower a) == "rejointimeout"   = RejoinTimeout
 readParam a | (map toLower a) == "rude"            = Rude
@@ -86,6 +106,7 @@ readParam a | (map toLower a) == "maxchanlines"    = MaxChanLines
 readParam _                                        = UnknownParam
 
 -- Change bot operating parameters.
+changeParam :: String -> String -> Net ()
 changeParam a b = do
     rk <- asks rejoinkick
     m <- asks maxchanlines
@@ -174,38 +195,39 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in c
 
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> Net ()
-evalCmd _ b (x:xs) | x == "!quit"    = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd _ b (x:xs) | x == "!join"    = if b == owner then joinChannel "JOIN" xs else return ()
-evalCmd _ b (x:xs) | x == "!part"    = if b == owner then joinChannel "PART" xs else return ()
-evalCmd _ b (x:xs) | x == "!setp"    = if b == owner then changeParam "maxchanlines" (xs!!0) else return ()
-evalCmd a b (x:xs) | x == "!related" =
+evalCmd _ b (x:xs) | x == "!quit"      = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
+evalCmd _ b (x:xs) | x == "!join"      = if b == owner then joinChannel "JOIN" xs else return ()
+evalCmd _ b (x:xs) | x == "!part"      = if b == owner then joinChannel "PART" xs else return ()
+evalCmd _ b (x:xs) | x == "!setparam"  = if b == owner then changeParam "maxchanlines" (xs!!0) else return ()
+evalCmd a b (x:xs) | x == "!params"    = if b == owner then replyMsg a b (init (concat $ map (++ " ") $ map show allParams)) else return ()
+evalCmd a b (x:xs) | x == "!related"   =
     case (length xs) of
       3 -> wnRelated a b (xs!!0) (xs!!1) (xs!!2)
       2 -> wnRelated a b (xs!!0) (xs!!1) []
       1 -> wnRelated a b (xs!!0) []      []
       _ -> replyMsg a b "Usage: !related word [form] [part-of-speech]"
-evalCmd a b (x:xs) | x == "!closure" =
+evalCmd a b (x:xs) | x == "!closure"   =
     case (length xs) of
       3 -> wnClosure a b (xs!!0) (xs!!1) (xs!!2)
       2 -> wnClosure a b (xs!!0) (xs!!1) []
       1 -> wnClosure a b (xs!!0) []      []
       _ -> replyMsg a b "Usage: !closure word [form] [part-of-speech]"
-evalCmd a b (x:xs) | x == "!gloss"   =
+evalCmd a b (x:xs) | x == "!gloss"     =
     case (length xs) of
       2 -> wnGloss a b (xs!!0) (xs!!1)
       1 -> wnGloss a b (xs!!0) []
       _ -> replyMsg a b "Usage: !gloss word [part-of-speech]"
-evalCmd a b (x:xs) | x == "!meet"    =
+evalCmd a b (x:xs) | x == "!meet"      =
     case (length xs) of
       3 -> wnMeet a b (xs!!0) (xs!!1) (xs!!2)
       2 -> wnMeet a b (xs!!0) (xs!!1) []
       _ -> replyMsg a b "Usage: !meet word word [part-of-speech]"
-evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
-evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
-evalCmd a b (x:xs) | x == "!help"       =
-    if b == owner then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !setp !join !part !quit"
+evalCmd a b (x:xs) | x == "!forms"     = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
+evalCmd a b (x:xs) | x == "!parts"     = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
+evalCmd a b (x:xs) | x == "!help"      =
+    if b == owner then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !params !setparam !join !part !quit"
     else replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts"
-evalCmd _ _ _                           = return ()
+evalCmd _ _ _                          = return ()
 
 -- Send a message to the channel.
 chanMsg :: String -> String -> Net ()
