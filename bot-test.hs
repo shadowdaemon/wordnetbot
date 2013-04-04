@@ -1,6 +1,7 @@
+import Data.Char (toUpper)
 import Data.List
 import Data.Maybe
-import Data.Tree
+import Data.Tree (flatten)
 import Network
 --import System.Environment (getArgs, getProgName)
 --import System.CPUTime
@@ -23,7 +24,7 @@ import NLP.WordNet.PrimTypes
 wndir     = "/usr/share/wordnet/dict/"
 server    = "irc.freenode.org"
 port      = 6667
-channels  = ["#lolbots","#oszero"]
+channels  = ["#lolbots"]
 nick      = "wordnetbot"
 owner     = "shadowdaemon"
 
@@ -56,12 +57,15 @@ connect = notify $ do
         (putStrLn "done.")
         a
 
--- Join a list of channels.
-joinChannel :: [String] -> Net ()
-joinChannel []     = return () :: Net ()
-joinChannel (x:xs) = do
-    write "JOIN" x
-    joinChannel xs
+-- Join (or leave) a list of channels.
+joinChannel :: String -> [String] -> Net ()
+joinChannel _  []    = return () :: Net ()
+joinChannel [] b     = joinChannel "join" b
+joinChannel a (x:xs) = do
+    if a == "JOIN" || a == "PART" then do
+      write a x
+      joinChannel a xs
+    else return ()
 
 -- We're in the Net monad now, so we've connected successfully.
 -- Join a channel, and start processing commands.
@@ -69,7 +73,7 @@ run :: Net ()
 run = do
     write "NICK" nick
     write "USER" (nick++" 0 * :user")
-    joinChannel channels
+    joinChannel "JOIN" channels
     asks socket >>= listen
 
 -- Process each line from the server (this needs flood prevention somewhere).
@@ -145,7 +149,8 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in c
 -- Evaluate commands.
 evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"    = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd _ b (x:xs) | x == "!join"    = if b == owner then joinChannel xs else return ()
+evalCmd _ b (x:xs) | x == "!join"    = if b == owner then joinChannel "JOIN" xs else return ()
+evalCmd _ b (x:xs) | x == "!part"    = if b == owner then joinChannel "PART" xs else return ()
 evalCmd a b (x:xs) | x == "!related" =
     case (length xs) of
       3 -> wnRelated a b (xs!!0) (xs!!1) (xs!!2)
@@ -171,7 +176,7 @@ evalCmd a b (x:xs) | x == "!meet"    =
 evalCmd a b (x:xs) | x == "!forms"      = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
 evalCmd a b (x:xs) | x == "!parts"      = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
 evalCmd a b (x:xs) | x == "!help"       =
-    if b == owner then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !join !quit"
+    if b == owner then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !join !part !quit"
     else replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts"
 evalCmd _ _ _                           = return ()
 
