@@ -213,7 +213,10 @@ evalCmd :: String -> String -> [String] -> Net ()
 evalCmd _ b (x:xs) | x == "!quit"      = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
 evalCmd _ b (x:xs) | x == "!join"      = if b == owner then joinChannel "JOIN" xs else return ()
 evalCmd _ b (x:xs) | x == "!part"      = if b == owner then joinChannel "PART" xs else return ()
-evalCmd _ b (x:xs) | x == "!setparam"  = if b == owner then changeParam "maxchanlines" (xs!!0) else return ()
+evalCmd a b (x:xs) | x == "!setparam"  = if b == owner then case (length xs) of
+                                                              2 -> changeParam (xs!!0) (xs!!1)
+                                                              _ -> replyMsg a b "Usage: !setparam parameter value"
+                                                       else return ()
 evalCmd a b (x:xs) | x == "!params"    = if b == owner then replyMsg a b (init (concat $ map (++ " ") $ map show allParams)) else return ()
 evalCmd a b (x:xs) | x == "!related"   =
     case (length xs) of
