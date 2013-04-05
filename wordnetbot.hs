@@ -342,11 +342,13 @@ wnRelated a b c  d [] = do
 wnRelated a b c [] _  = wnRelated a b c "Hypernym" []
 wnRelated a b c d  e  = do
     w <- asks wne
+    m <- asks maxchanlines
+    mm <- io $ readIORef m
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
     let result = fromMaybe [[]] (runs w (relatedByList wnForm (search (wnFixWord c) wnPos AllSenses)))
     if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else
-      if (length result) > 2 then wnRelated' b b result else wnRelated' a b result -- Redirect reply to prevent channel spam.
+      if (length result) > mm then wnRelated' b b result else wnRelated' a b result -- Redirect reply to prevent channel spam.
   where
     wnRelated' _ _ []     = return ()
     wnRelated' a b (x:xs) = do
@@ -363,11 +365,13 @@ wnClosure a b c  d [] = do
 wnClosure a b c [] _  = wnClosure a b c "Hypernym" []
 wnClosure a b c d  e  = do
     w <- asks wne
+    m <- asks maxchanlines
+    mm <- io $ readIORef m
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
     let result = runs w (closureOnList wnForm (search (wnFixWord c) wnPos AllSenses)) -- [Maybe (Tree SearchResult)]
     if (null result) then return "Nothing!" >>= replyMsg a b else
-      if (length result) > 2 then wnClosure' 0 b b result else wnClosure' 0 a b result -- Redirect reply to prevent channel spam.
+      if (length result) > mm then wnClosure' 0 b b result else wnClosure' 0 a b result -- Redirect reply to prevent channel spam.
   where
     wnClosure' _  _ _ []     = return ()
     wnClosure' 20 _ _ _      = return () -- "20" here is a recursion limit (just in case).
