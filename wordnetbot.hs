@@ -79,7 +79,7 @@ connect = notify $ do
     w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath) 
       (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
     m <- newIORef 2
-    rk <- newIORef 10
+    rk <- newIORef 0
     return (Bot h w m rk)
   where
     notify a = bracket_
@@ -164,6 +164,13 @@ isPM :: [String] -> Bool
 isPM a
     | getChannel a == nick = True
     | otherwise            = False
+
+-- Have we been kicked from a channel?
+beenKicked :: [String] -> String
+beenKicked [] = []
+beenKicked a
+    | (head $ drop 1 a) == "KICK" = if (head $ drop 3 a) == nick then getChannel a else []
+    | otherwise                   = []
 
 -- Process IRC line.
 processLine :: [String] -> Net ()
