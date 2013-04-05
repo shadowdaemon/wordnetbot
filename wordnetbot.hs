@@ -45,23 +45,26 @@ data Parameter = RejoinKick | RejoinTimeout | Rudeness | Verbosity | OpControl |
 
 allParams = [RejoinKick ..]
 
+-- instance Enum Parameter where
+--     toEnum 1 = RejoinKick
+--     toEnum 2 = RejoinTimeout
+--     toEnum 3 = Rudeness
+--     toEnum 4 = Verbosity
+--     toEnum 5 = OpControl
+--     toEnum 6 = MaxChanLines
+--     toEnum 7 = UnknownParam
+--     fromEnum RejoinKick     = 1
+--     fromEnum RejoinTimeout  = 2
+--     fromEnum Rudeness       = 3
+--     fromEnum Verbosity      = 4
+--     fromEnum OpControl      = 5
+--     fromEnum MaxChanLines   = 6
+--     fromEnum UnknownParam   = 7
+--     enumFrom i = enumFromTo i MaxChanLines
+--     enumFromThen i j = enumFromThenTo i j MaxChanLines
 instance Enum Parameter where
-    toEnum 1 = RejoinKick
-    toEnum 2 = RejoinTimeout
-    toEnum 3 = Rudeness
-    toEnum 4 = Verbosity
-    toEnum 5 = OpControl
-    toEnum 6 = MaxChanLines
-    toEnum 7 = UnknownParam
-    fromEnum RejoinKick     = 1
-    fromEnum RejoinTimeout  = 2
-    fromEnum Rudeness       = 3
-    fromEnum Verbosity      = 4
-    fromEnum OpControl      = 5
-    fromEnum MaxChanLines   = 6
-    fromEnum UnknownParam   = 7
-    enumFrom i = enumFromTo i MaxChanLines
-    enumFromThen i j = enumFromThenTo i j MaxChanLines
+    toEnum   a = fromJust $ lookup a $ zip [1 .. ((length allParams) - 1)] [RejoinKick .. MaxChanLines]
+    fromEnum a = fromJust $ lookup a $ zip [RejoinKick .. MaxChanLines] [1 .. ((length allParams) - 1)]
 
 -- Set up actions to run on start and end, and run the main loop.
 main :: IO ()
