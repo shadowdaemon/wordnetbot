@@ -45,26 +45,23 @@ data Parameter = RejoinKick | RejoinTimeout | Rudeness | Verbosity | OpControl |
 
 allParams = [RejoinKick ..]
 
--- instance Enum Parameter where
---     toEnum 1 = RejoinKick
---     toEnum 2 = RejoinTimeout
---     toEnum 3 = Rudeness
---     toEnum 4 = Verbosity
---     toEnum 5 = OpControl
---     toEnum 6 = MaxChanLines
---     toEnum 7 = UnknownParam
---     fromEnum RejoinKick     = 1
---     fromEnum RejoinTimeout  = 2
---     fromEnum Rudeness       = 3
---     fromEnum Verbosity      = 4
---     fromEnum OpControl      = 5
---     fromEnum MaxChanLines   = 6
---     fromEnum UnknownParam   = 7
---     enumFrom i = enumFromTo i MaxChanLines
---     enumFromThen i j = enumFromThenTo i j MaxChanLines
 instance Enum Parameter where
-    toEnum   a = fromJust $ lookup a $ zip [1 .. ((length allParams) - 1)] [RejoinKick .. MaxChanLines]
-    fromEnum a = fromJust $ lookup a $ zip [RejoinKick .. MaxChanLines] [1 .. ((length allParams) - 1)]
+    toEnum 1 = RejoinKick
+    toEnum 2 = RejoinTimeout
+    toEnum 3 = Rudeness
+    toEnum 4 = Verbosity
+    toEnum 5 = OpControl
+    toEnum 6 = MaxChanLines
+    toEnum 7 = UnknownParam
+    fromEnum RejoinKick     = 1
+    fromEnum RejoinTimeout  = 2
+    fromEnum Rudeness       = 3
+    fromEnum Verbosity      = 4
+    fromEnum OpControl      = 5
+    fromEnum MaxChanLines   = 6
+    fromEnum UnknownParam   = 7
+    enumFrom i = enumFromTo i UnknownParam
+    enumFromThen i j = enumFromThenTo i j UnknownParam
 
 -- Set up actions to run on start and end, and run the main loop.
 main :: IO ()
@@ -237,7 +234,7 @@ evalCmd a b (x:xs) | x == "!setparam"  = if b == owner then case (length xs) of
                                                               2 -> changeParam (xs!!0) (xs!!1)
                                                               _ -> replyMsg a b "Usage: !setparam parameter value"
                                                        else return ()
-evalCmd a b (x:xs) | x == "!params"    = if b == owner then replyMsg a b (init (concat $ map (++ " ") $ map show allParams)) else return ()
+evalCmd a b (x:xs) | x == "!params"    = if b == owner then replyMsg a b (init (concat $ map (++ " ") $ map show $ init allParams)) else return ()
 evalCmd a b (x:xs) | x == "!related"   =
     case (length xs) of
       3 -> wnRelated a b (xs!!0) (xs!!1) (xs!!2)
@@ -260,7 +257,7 @@ evalCmd a b (x:xs) | x == "!meet"      =
       3 -> wnMeet a b (xs!!0) (xs!!1) (xs!!2)
       2 -> wnMeet a b (xs!!0) (xs!!1) []
       _ -> replyMsg a b "Usage: !meet word word [part-of-speech]"
-evalCmd a b (x:xs) | x == "!forms"     = replyMsg a b (init (concat $ map (++ " ") $ map show allForm))
+evalCmd a b (x:xs) | x == "!forms"     = replyMsg a b (init (concat $ map (++ " ") $ map show $ init allForm))
 evalCmd a b (x:xs) | x == "!parts"     = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
 evalCmd a b (x:xs) | x == "!help"      =
     if b == owner then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !params !setparam !join !part !quit"
