@@ -6,13 +6,15 @@ import Data.Tree (flatten)
 import Network
 --import System.Environment (getArgs, getProgName)
 --import System.CPUTime
-import System.Directory
+--import System.Directory
+import System.Exit
 import System.IO
 import System.IO.Error
-import System.Exit
+import System.Posix.Unistd
 import Control.Arrow
-import Control.Monad.Reader
+import Control.Concurrent
 import Control.Exception
+import Control.Monad.Reader
 import Text.Printf
 --import Text.Regex.TDFA
 import Prelude
@@ -136,6 +138,11 @@ listen h = forever $ do
     ping x    = "PING :" `isPrefixOf` x
     pong x    = write "PONG" (':' : drop 6 x)
 
+-- getCPUTimeSecs :: IO Double
+-- getCPUTimeSecs = do
+--    a <- getCPUTime
+--    return (fromInteger a / 1000000000)
+
 -- Get the actual message.
 getMsg :: [String] -> [String]
 getMsg a
@@ -179,7 +186,14 @@ rejoinChannel [] = return () :: Net ()
 rejoinChannel a = do
     rk <- asks rejoinkick
     rkk <- io $ readIORef rk
-    if rkk == 0 then return () else joinChannel "JOIN" (a : [])
+--    if rkk == 0 then return () else joinChannel "JOIN" (a : [])
+    if rkk == 0 then return () else do
+      io $ sleep rkk
+      joinChannel "JOIN" (a : [])
+
+-- blah a b = do
+--     threadDelay a
+--     io $ forkIO (joinChannel "JOIN" (b : []))
 
 -- Process IRC line.
 processLine :: [String] -> Net ()
