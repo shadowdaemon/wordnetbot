@@ -11,7 +11,7 @@ import System.Exit
 import System.IO
 import System.IO.Error
 import Control.Arrow
-import Control.Concurrent
+import Control.Concurrent (forkIO, threadDelay)
 import Control.Exception
 import Control.Monad.Reader
 import Text.Printf
@@ -195,7 +195,7 @@ processLine :: [String] -> Net ()
 processLine [] = return ()
 processLine a
     | (not $ null $ beenKicked a) = rejoinChannel $ beenKicked a
---    | (beenKicked a) /= [] = rejoinChannel $ beenKicked a
+--  | (beenKicked a) /= [] = rejoinChannel $ beenKicked a
     | null msg'         = return () -- Ignore because not PRIVMSG.
     | chan' == nick     = if (head $ head msg') == '!' then evalCmd who' who' msg' -- Evaluate command (the double "who" is significant).
                           else reply [] who' msg' -- Respond to PM.
