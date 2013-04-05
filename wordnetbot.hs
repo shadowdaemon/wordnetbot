@@ -10,7 +10,6 @@ import Network
 import System.Exit
 import System.IO
 import System.IO.Error
-import Control.Arrow
 import Control.Concurrent (forkIO, threadDelay)
 import Control.Exception
 import Control.Monad.Reader
@@ -188,7 +187,7 @@ rejoinChannel a = do
     rkk <- io $ readIORef rk
     if rkk == 0 then return () else io (rejoin' rkk a h) >> return ()
   where
-    rejoin' rkk a h = do forkIO (threadDelay (rkk * 1000000) >> hPrintf h "JOIN %s\r\n" a)
+    rejoin' rkk a h = forkIO (threadDelay (rkk * 1000000) >> hPrintf h "JOIN %s\r\n" a)
 
 -- Process IRC line.
 processLine :: [String] -> Net ()
