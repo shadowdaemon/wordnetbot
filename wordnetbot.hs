@@ -147,9 +147,11 @@ listen h = forever $ do
 
 -- Get the actual message.
 getMsg :: [String] -> [String]
+getMsg [] = []
 getMsg a
+    | (length a) < 5                 = []
     | (head $ drop 1 a) == "PRIVMSG" = (drop 1 (a!!3)) : (drop 4 a)
-    | otherwise = []
+    | otherwise                      = []
 
 -- Who is speaking to us?
 getNick :: [String] -> String
@@ -333,9 +335,9 @@ wnPartString a = do
       | otherwise                               = "Other"
 
 -- Try to determine most common POS for word.
-wnPartPOS :: String -> Net POS
-wnPartPOS a = do
-    w <- asks wne
+--wnPartPOS :: String -> Net POS
+wnPartPOS a w = do
+--    w <- asks wne
     ind1 <- io $ indexLookup w a Noun
     ind2 <- io $ indexLookup w a Verb
     ind3 <- io $ indexLookup w a Adj

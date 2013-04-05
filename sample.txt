@@ -105,3 +105,6 @@ PRIVMSG #lolbots :Words -> ["laptop_computer"]
 <wordnetbot> shadowdaemon: a drug that is taken for nonmedicinal reasons                                                                                   (usually for mind-altering effects); drug abuse can lead to                                                                                   physical and mental damage and (with some substances) dependence                                                                              and addiction
 
 :shadowdaemon!~boring@unaffiliated/shadowdaemon KICK #lolbots wordnetbot :Kicked by shadowdaemon
+
+:shifu!~woot@unaffiliated/shifu PRIVMSG #anapnea :wordnetbot:
+wordnetbot: Prelude.head: empty list
