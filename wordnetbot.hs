@@ -39,7 +39,7 @@ data Bot = Bot {
     }
 
 -- Stuff for changing bot operating parameters.
-data Parameter = RejoinKick | RejoinTimeout | Rude | OpControl | MaxChanLines | UnknownParam
+data Parameter = RejoinKick | RejoinTimeout | Rudeness | Verbosity | OpControl | MaxChanLines | UnknownParam
     deriving (Eq, Ord, Show)
 
 allParams = [RejoinKick ..]
@@ -47,16 +47,18 @@ allParams = [RejoinKick ..]
 instance Enum Parameter where
     toEnum 1 = RejoinKick
     toEnum 2 = RejoinTimeout
-    toEnum 3 = Rude
-    toEnum 4 = OpControl
-    toEnum 5 = MaxChanLines
-    toEnum 6 = UnknownParam
+    toEnum 3 = Rudeness
+    toEnum 4 = Verbosity
+    toEnum 5 = OpControl
+    toEnum 6 = MaxChanLines
+    toEnum 7 = UnknownParam
     fromEnum RejoinKick     = 1
     fromEnum RejoinTimeout  = 2
-    fromEnum Rude           = 3
-    fromEnum OpControl      = 4
-    fromEnum MaxChanLines   = 5
-    fromEnum UnknownParam   = 6
+    fromEnum Rudeness       = 3
+    fromEnum Verbosity      = 4
+    fromEnum OpControl      = 5
+    fromEnum MaxChanLines   = 6
+    fromEnum UnknownParam   = 7
     enumFrom i = enumFromTo i MaxChanLines
     enumFromThen i j = enumFromThenTo i j MaxChanLines
 
@@ -100,7 +102,8 @@ joinChannel a (x:xs) = do
 readParam :: String -> Parameter
 readParam a | (map toLower a) == "rejoinkick"      = RejoinKick
 readParam a | (map toLower a) == "rejointimeout"   = RejoinTimeout
-readParam a | (map toLower a) == "rude"            = Rude
+readParam a | (map toLower a) == "rudeness"        = Rudeness
+readParam a | (map toLower a) == "verbosity"       = Verbosity
 readParam a | (map toLower a) == "opcontrol"       = OpControl
 readParam a | (map toLower a) == "maxchanlines"    = MaxChanLines
 readParam _                                        = UnknownParam
