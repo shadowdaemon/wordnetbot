@@ -4,6 +4,7 @@ import Data.List
 import Data.Maybe
 import Data.Tree (flatten)
 import Network
+import System.Random
 --import System.Environment (getArgs, getProgName)
 --import System.CPUTime
 --import System.Directory
@@ -350,6 +351,16 @@ wnPartPOS a = do
       | fromJust (elemIndex (maximum a) a) == 3 = Adv
       | otherwise                               = Adj
 
+-- Replace a word.
+wnReplace :: String -> WordNetEnv -> POS -> String
+wnReplace a w p = if (null result) || (null $ concat result) then a else wnReplace' result
+  where
+    result = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) p AllSenses)))
+    wnReplace' []       = []
+    wnReplace' a@(x:xs) = do
+      let l = length a
+      (concat $ map (getWords . getSynset) (concat a))!!1
+
 -- Wordnet search.
 wnRelated :: String -> String -> String -> String -> String -> Net ()
 wnRelated a b [] _ _  = return () :: Net ()
@@ -369,7 +380,7 @@ wnRelated a b c d  e  = do
   where
     wnRelated' _ _ []     = return ()
     wnRelated' a b (x:xs) = do
-      if (null x) then return ()
+      if (null x) then return () -- Redundant?
       else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset) x) >>= replyMsg a b
       wnRelated' a b xs
 
