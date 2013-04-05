@@ -161,6 +161,7 @@ spokenTo a
 
 -- Is this a private message?
 isPM :: [String] -> Bool
+isPM [] = False
 isPM a
     | getChannel a == nick = True
     | otherwise            = False
@@ -172,16 +173,23 @@ beenKicked a
     | (head $ drop 1 a) == "KICK" = if (head $ drop 3 a) == nick then getChannel a else []
     | otherwise                   = []
 
+-- rejoinChannel [] = []
+-- rejoinChannel a = do
+--     rk <- asks rejoinkick
+--     rkk <- io $ readIORef rk
+--     if rkk == 0 then return () else wait rkk joinChannel a
+
 -- Process IRC line.
 processLine :: [String] -> Net ()
+processLine [] = return ()
 processLine a
-    | length a == 0     = return ()
-    | length msg' == 0  = return () -- Ignore because not PRIVMSG.
+    | null msg'         = return () -- Ignore because not PRIVMSG.
     | chan' == nick     = if (head $ head msg') == '!' then evalCmd who' who' msg' -- Evaluate command (the double "who" is significant).
                           else reply [] who' msg' -- Respond to PM.
     | spokenTo msg'     = if (head $ head $ tail msg') == '!'
                           then evalCmd chan' who' (joinWords '"' (tail msg')) -- Evaluate command.
                           else reply chan' who' (tail msg') -- Respond upon being addressed.
+--    | (not $ null $ beenKicked a) = rejoinChannel $ beenKicked a
     | otherwise         = return ()
     -- | otherwise         = processMsg chan' who' msg' -- Process message.
     -- | otherwise         = reply chan' [] msg' -- Testing.
