@@ -78,9 +78,9 @@ connect = notify $ do
     hSetBuffering h NoBuffering
     w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath) 
       (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
-    m <- newIORef 2
     rk <- newIORef 0
-    return (Bot h w m rk)
+    m <- newIORef 2
+    return (Bot h w rk m)
   where
     notify a = bracket_
         (printf "Connecting to %s ... " server >> hFlush stdout)
@@ -115,6 +115,7 @@ changeParam a b = do
       -- OpControl    -> io $ writeIORef o
       RejoinKick   -> io $ writeIORef rk (read b)
       MaxChanLines -> io $ writeIORef m (read b)
+      _            -> return ()
 
 -- Join a channel, and start processing commands.
 run :: Net ()
@@ -173,23 +174,25 @@ beenKicked a
     | (head $ drop 1 a) == "KICK" = if (head $ drop 3 a) == nick then getChannel a else []
     | otherwise                   = []
 
--- rejoinChannel [] = []
--- rejoinChannel a = do
---     rk <- asks rejoinkick
---     rkk <- io $ readIORef rk
---     if rkk == 0 then return () else wait rkk joinChannel a
+rejoinChannel :: String -> Net ()
+rejoinChannel [] = return () :: Net ()
+rejoinChannel a = do
+    rk <- asks rejoinkick
+    rkk <- io $ readIORef rk
+    if rkk == 0 then return () else joinChannel "JOIN" (a : [])
 
 -- Process IRC line.
 processLine :: [String] -> Net ()
 processLine [] = return ()
 processLine a
+    | (not $ null $ beenKicked a) = rejoinChannel $ beenKicked a
+--    | (beenKicked a) /= [] = rejoinChannel $ beenKicked a
     | null msg'         = return () -- Ignore because not PRIVMSG.
     | chan' == nick     = if (head $ head msg') == '!' then evalCmd who' who' msg' -- Evaluate command (the double "who" is significant).
                           else reply [] who' msg' -- Respond to PM.
     | spokenTo msg'     = if (head $ head $ tail msg') == '!'
                           then evalCmd chan' who' (joinWords '"' (tail msg')) -- Evaluate command.
                           else reply chan' who' (tail msg') -- Respond upon being addressed.
---    | (not $ null $ beenKicked a) = rejoinChannel $ beenKicked a
     | otherwise         = return ()
     -- | otherwise         = processMsg chan' who' msg' -- Process message.
     -- | otherwise         = reply chan' [] msg' -- Testing.
