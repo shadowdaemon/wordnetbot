@@ -10,7 +10,6 @@ import Network
 import System.Exit
 import System.IO
 import System.IO.Error
-import System.Posix.Unistd
 import Control.Arrow
 import Control.Concurrent
 import Control.Exception
@@ -184,16 +183,12 @@ beenKicked a
 rejoinChannel :: String -> Net ()
 rejoinChannel [] = return () :: Net ()
 rejoinChannel a = do
+    h <- asks socket
     rk <- asks rejoinkick
     rkk <- io $ readIORef rk
---    if rkk == 0 then return () else joinChannel "JOIN" (a : [])
-    if rkk == 0 then return () else do
-      io $ sleep rkk
-      joinChannel "JOIN" (a : [])
-
--- blah a b = do
---     threadDelay a
---     io $ forkIO (joinChannel "JOIN" (b : []))
+    if rkk == 0 then return () else io (rejoin' rkk a h) >> return ()
+  where
+    rejoin' rkk a h = do forkIO (threadDelay (rkk * 1000000) >> hPrintf h "JOIN %s\r\n" a)
 
 -- Process IRC line.
 processLine :: [String] -> Net ()
