@@ -18,7 +18,6 @@ import Text.Printf
 --import Text.Regex.TDFA
 import Prelude
 
---import NLP.Nerf
 import NLP.WordNet
 import NLP.WordNet.Prims (indexLookup, senseCount, getSynset, getWords, getGloss)
 import NLP.WordNet.PrimTypes
@@ -328,11 +327,11 @@ wnPartString a = do
     count' a = if isJust a then senseCount (fromJust a) else 0
     type' [] = "Other"
     type' a
-      | fromJust (elemIndex (maximum a) a) == 0 = "Noun"
-      | fromJust (elemIndex (maximum a) a) == 1 = "Verb"
-      | fromJust (elemIndex (maximum a) a) == 2 = "Adj"
-      | fromJust (elemIndex (maximum a) a) == 3 = "Adv"
-      | otherwise                               = "Other"
+      | fromMaybe (-1) (elemIndex (maximum a) a) == 0 = "Noun"
+      | fromMaybe (-1) (elemIndex (maximum a) a) == 1 = "Verb"
+      | fromMaybe (-1) (elemIndex (maximum a) a) == 2 = "Adj"
+      | fromMaybe (-1) (elemIndex (maximum a) a) == 3 = "Adv"
+      | otherwise                                     = "Other"
 
 -- Try to determine most common POS for word.
 wnPartPOS :: String -> Net POS
@@ -347,11 +346,11 @@ wnPartPOS a = do
     count' a = if isJust a then senseCount (fromJust a) else 0
     type' [] = Adj
     type' a
-      | fromJust (elemIndex (maximum a) a) == 0 = Noun
-      | fromJust (elemIndex (maximum a) a) == 1 = Verb
-      | fromJust (elemIndex (maximum a) a) == 2 = Adj
-      | fromJust (elemIndex (maximum a) a) == 3 = Adv
-      | otherwise                               = Adj
+      | fromMaybe (-1) (elemIndex (maximum a) a) == 0 = Noun
+      | fromMaybe (-1) (elemIndex (maximum a) a) == 1 = Verb
+      | fromMaybe (-1) (elemIndex (maximum a) a) == 2 = Adj
+      | fromMaybe (-1) (elemIndex (maximum a) a) == 3 = Adv
+      | otherwise                                     = Adj
 
 -- Wordnet search.
 wnRelated :: String -> String -> String -> String -> String -> Net ()
