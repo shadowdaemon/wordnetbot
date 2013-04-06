@@ -433,20 +433,3 @@ wnMeet a b c d e  = do
     let result = runs w (meet emptyQueue (head $ search (wnFixWord c) wnPos 1) (head $ search (wnFixWord d) wnPos 1))
     if (isNothing result) then return "Nothing!" >>= replyMsg a b else
       return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ getWords $ getSynset (fromJust result)) >>= replyMsg a b
-
--- Replace word.
-wnReplaceWord :: WordNetEnv -> Form -> POS -> String -> String
-wnReplaceWord w f p a =
-    if (null result) || (null $ concat result) then a
-    else replace '_' ' ' $ genericIndex (concat $ map (getWords . getSynset) (concat result)) 1
-  where
-    result = fromMaybe [[]] (runs w (relatedByList f (search (wnFixWord a) p AllSenses)))
-
--- Munge sentence test.
-wnReplaceMsg :: String -> String -> [String] -> Net ()
-wnReplaceMsg a b c  = do
-    w <- asks wne
---    wnPos <- wnPartPOS (wnFixWord c)
-    let wnPos = Noun
-    let form = Hypernym
-    return (unwords (map (wnReplaceWord w form wnPos) c)) >>= replyMsg a b
