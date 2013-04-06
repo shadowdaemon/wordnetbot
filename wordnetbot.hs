@@ -24,11 +24,11 @@ import NLP.WordNet.Prims (indexLookup, senseCount, getSynset, getWords, getGloss
 import NLP.WordNet.PrimTypes
 
 wndir     = "/usr/share/wordnet/dict/"
-server    = "irc.freenode.org"
+server    = "irc.freenode.net"
 port      = 6667
 channels  = ["#lolbots"]
 nick      = "wordnetbot"
-owner     = "shadowdaemon"
+owner     = "fnordmeister"
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
@@ -219,7 +219,7 @@ processLine a
 reply :: String -> String -> [String] -> Net ()
 reply [] who' msg = privMsg who' "Eh?" -- PM.
 reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  Channel talk.
-reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg -- Reply in channel.
+reply chan' who' msg = wnReplaceMsg chan' who' msg
 
 -- Process messages.
 --processMsg :: String -> String -> [String] -> ReaderT Bot IO ()
@@ -335,9 +335,9 @@ wnPartString a = do
       | otherwise                               = "Other"
 
 -- Try to determine most common POS for word.
---wnPartPOS :: String -> Net POS
-wnPartPOS a w = do
---    w <- asks wne
+wnPartPOS :: String -> Net POS
+wnPartPOS a = do
+    w <- asks wne
     ind1 <- io $ indexLookup w a Noun
     ind2 <- io $ indexLookup w a Verb
     ind3 <- io $ indexLookup w a Adj
@@ -352,16 +352,6 @@ wnPartPOS a w = do
       | fromJust (elemIndex (maximum a) a) == 2 = Adj
       | fromJust (elemIndex (maximum a) a) == 3 = Adv
       | otherwise                               = Adj
-
--- Replace a word.
-wnReplace :: String -> WordNetEnv -> POS -> String
-wnReplace a w p = if (null result) || (null $ concat result) then a else wnReplace' result
-  where
-    result = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) p AllSenses)))
-    wnReplace' []       = []
-    wnReplace' a@(x:xs) = do
-      let l = length a
-      (concat $ map (getWords . getSynset) (concat a))!!1
 
 -- Wordnet search.
 wnRelated :: String -> String -> String -> String -> String -> Net ()
@@ -444,3 +434,20 @@ wnMeet a b c d e  = do
     let result = runs w (meet emptyQueue (head $ search (wnFixWord c) wnPos 1) (head $ search (wnFixWord d) wnPos 1))
     if (isNothing result) then return "Nothing!" >>= replyMsg a b else
       return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ getWords $ getSynset (fromJust result)) >>= replyMsg a b
+
+-- Replace word.
+wnReplaceWord :: WordNetEnv -> Form -> POS -> String -> String
+wnReplaceWord w f p a =
+    if (null result) || (null $ concat result) then a
+    else replace '_' ' ' $ genericIndex (concat $ map (getWords . getSynset) (concat result)) 1
+  where
+    result = fromMaybe [[]] (runs w (relatedByList f (search (wnFixWord a) p AllSenses)))
+
+-- Munge sentence test.
+wnReplaceMsg :: String -> String -> [String] -> Net ()
+wnReplaceMsg a b c  = do
+    w <- asks wne
+--    wnPos <- wnPartPOS (wnFixWord c)
+    let wnPos = Noun
+    let form = Hypernym
+    return (unwords (map (wnReplaceWord w form wnPos) c)) >>= replyMsg a b
