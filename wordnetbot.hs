@@ -141,7 +141,7 @@ changeNick (x:xs) = do
     s <- init `fmap` io (hGetLine h)
     io (putStrLn s)
     let b = words s
-    if (length b) > 2 then testNick' n o a (take 2 (drop 1 b)) else return ()
+    if (length b) > 2 then testNick' n o a (take 2 (drop 1 b)) else return "Something went wrong!" >>= privMsg o
   where
     testNick' :: IORef String -> String -> String -> [String] -> Net ()
     testNick' n o a w
