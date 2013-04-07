@@ -130,18 +130,29 @@ botNick = do
     nn <- io $ readIORef n
     return nn
 
--- Change nick, needs to strip non-kosher IRC nick characters out... deletes digits, meh.
+-- Change nick, needs to strip non-kosher IRC nick characters out.  Tests for success.
 changeNick []     = return () :: Net ()
 changeNick (x:xs) = do
+    h <- asks socket
     n <- asks nick
     let a = cleanNick x
-    io $ writeIORef n a
-    write "NICK" a
+    write "NICK" a -- Send nick change request.
+    s <- init `fmap` io (hGetLine h)
+    io (putStrLn s)
+    let b = words s
+    if (length b) > 2 then testNick' n a (take 2 (drop 1 b)) else return ()
+  where
+    testNick' :: IORef String -> String -> [String] -> Net ()
+    testNick' n a w
+        | (x == "NICK") && (drop 1 y) == a = io $ writeIORef n a -- Test for success, update IORef.
+        | otherwise                        = return ()
+      where
+        x = head w
+        y = last w
 
 cleanNick :: String -> String
 cleanNick [] = []
 cleanNick (x:xs)
-        | isDigit x       = cleanNick xs
         | not $ isAscii x = cleanNick xs
         | otherwise       = x : cleanNick xs
 
