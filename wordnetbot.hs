@@ -99,14 +99,14 @@ connect = notify $ do
     args <- cmdLine
     let server  = args !! 0
     let port    = read $ args !! 1
-    let nick'   = args !! 2
-    let owner'  = args !! 3
+    let nick    = args !! 2
+    let owner   = args !! 3
     h <- connectTo server (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
     w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath) 
       (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
-    n <- newIORef nick'
-    o <- newIORef owner'
+    n <- newIORef nick
+    o <- newIORef owner
     rk <- newIORef 0
     m <- newIORef 2
     return (Bot h w n o rk m)
@@ -129,6 +129,14 @@ botNick = do
     n <- asks nick
     nn <- io $ readIORef n
     return nn
+
+-- Change nick, needs to strip non-kosher IRC nick characters out...
+-- :hobana.freenode.net 432 wordnetbot 111787foo :Erroneous Nickname
+changeNick []     = return () :: Net ()
+changeNick (x:xs) = do
+    n <- asks nick
+    io $ writeIORef n x
+    write "NICK" x
 
 -- Join (or leave) a list of channels.
 joinChannel :: String -> [String] -> Net ()
@@ -264,10 +272,11 @@ evalCmd :: String -> String -> String -> [String] -> Net ()
 evalCmd _ b o (x:xs) | x == "!quit"      = if b == o then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
 evalCmd _ b o (x:xs) | x == "!join"      = if b == o then joinChannel "JOIN" xs else return ()
 evalCmd _ b o (x:xs) | x == "!part"      = if b == o then joinChannel "PART" xs else return ()
+evalCmd _ b o (x:xs) | x == "!nick"      = if b == o then changeNick xs else return ()
 evalCmd a b o (x:xs) | x == "!setparam"  = if b == o then case (length xs) of
                                                               2 -> changeParam (xs!!0) (xs!!1)
                                                               _ -> replyMsg a b "Usage: !setparam parameter value"
-                                                       else return ()
+                                                      else return ()
 evalCmd a b o (x:xs) | x == "!params"    = if b == o then replyMsg a b (init (concat $ map (++ " ") $ map show $ init allParams)) else return ()
 evalCmd a b o (x:xs) | x == "!related"   =
     case (length xs) of
@@ -296,7 +305,7 @@ evalCmd a b o (x:xs) | x == "!parts"     = replyMsg a b (init (concat $ map (++ 
 evalCmd a b o (x:xs) | x == "!help"      =
     if b == o then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !params !setparam !join !part !quit"
     else replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts"
-evalCmd _ _ _ _                         = return ()
+evalCmd _ _ _ _                          = return ()
 
 -- Send a message to the channel.
 chanMsg :: String -> String -> Net ()
