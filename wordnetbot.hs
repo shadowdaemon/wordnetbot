@@ -219,15 +219,16 @@ beenKicked n a
     | (head $ drop 1 a) == "KICK" = if (head $ drop 3 a) == n then getChannel a else []
     | otherwise                   = []
 
+-- Possibly rejoin a channel depending on RejoinKick time.
 rejoinChannel :: String -> Net ()
 rejoinChannel [] = return () :: Net ()
-rejoinChannel a = do
+rejoinChannel chan = do
     h <- asks socket
     rk <- asks rejoinkick
-    rkk <- io $ readIORef rk
-    if rkk == 0 then return () else io (rejoin' rkk a h) >> return ()
+    rtime <- io $ readIORef rk
+    if rtime == 0 then return () else io (rejoin' rtime chan h) >> return ()
   where
-    rejoin' rkk a h = forkIO (threadDelay (rkk * 1000000) >> hPrintf h "JOIN %s\r\n" a)
+    rejoin' rtime chan h = forkIO (threadDelay (rtime * 1000000) >> hPrintf h "JOIN %s\r\n" chan)
 
 -- Process IRC line.
 processLine :: String -> String -> [String] -> Net ()
