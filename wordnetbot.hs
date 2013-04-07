@@ -1,4 +1,4 @@
-import Data.Char (toLower)
+import Data.Char (isDigit, isAscii, toLower)
 import Data.IORef
 import Data.List
 import Data.Maybe
@@ -130,13 +130,19 @@ botNick = do
     nn <- io $ readIORef n
     return nn
 
--- Change nick, needs to strip non-kosher IRC nick characters out...
--- :hobana.freenode.net 432 wordnetbot 111787foo :Erroneous Nickname
+-- Change nick, needs to strip non-kosher IRC nick characters out... deletes digits, meh.
 changeNick []     = return () :: Net ()
 changeNick (x:xs) = do
     n <- asks nick
-    io $ writeIORef n x
-    write "NICK" x
+    let a = clean' x
+    io $ writeIORef n a
+    write "NICK" a
+  where
+    clean' [] = []
+    clean' (x:xs)
+        | isDigit x       = clean' xs
+        | not $ isAscii x = clean' xs
+        | otherwise       = x : clean' xs
 
 -- Join (or leave) a list of channels.
 joinChannel :: String -> [String] -> Net ()
