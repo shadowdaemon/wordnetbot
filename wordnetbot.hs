@@ -24,9 +24,14 @@ import NLP.WordNet.PrimTypes
 
 wndir     = "/usr/share/wordnet/dict/"
 channels  = ["#lolbots"]
-owner     = "fnordmeister"
-nick = do
-    n <- asks nick'
+
+botOwner = do
+    o <- asks owner
+    oo <- io $ readIORef o
+    return oo
+
+botNick = do
+    n <- asks nick
     nn <- io $ readIORef n
     return nn
 
@@ -35,8 +40,8 @@ type Net = ReaderT Bot IO
 data Bot = Bot {
     socket :: Handle,
     wne :: WordNetEnv,
-    nick' :: IORef String,
-    owner' :: IORef String,
+    nick :: IORef String,
+    owner :: IORef String,
     rejoinkick :: IORef Int,
     maxchanlines :: IORef Int
     }
@@ -72,6 +77,7 @@ main = bracket connect disconnect loop
     disconnect = do hClose . socket ; closeWordNet . wne
     loop st    = catchIOError (runReaderT run st) (const $ return ())
 
+-- Get command line options.
 cmdLine :: IO [String]
 cmdLine = do
     -- server, port, nick, owner, initial channels, Wordnet directory
@@ -145,7 +151,7 @@ changeParam a b = do
 -- Join a channel, and start processing commands.
 run :: Net ()
 run = do
-    n <- nick
+    n <- botNick
     write "NICK" n
     write "USER" (n ++" 0 * :user")
     joinChannel "JOIN" channels
@@ -155,9 +161,10 @@ run = do
 listen :: Handle -> Net ()
 listen h = forever $ do
     s <- init `fmap` io (hGetLine h)
-    n <- nick
+    n <- botNick
+    o <- botOwner
     io (putStrLn s)
-    if ping s then pong s else processLine n (words s)
+    if ping s then pong s else processLine n o (words s)
   where
     forever a = a >> forever a
     ping x    = "PING :" `isPrefixOf` x
@@ -219,15 +226,15 @@ rejoinChannel a = do
     rejoin' rkk a h = forkIO (threadDelay (rkk * 1000000) >> hPrintf h "JOIN %s\r\n" a)
 
 -- Process IRC line.
-processLine :: String -> [String] -> Net ()
-processLine _ [] = return ()
-processLine n a
+processLine :: String -> String -> [String] -> Net ()
+processLine _ _ [] = return ()
+processLine n o a
     | (not $ null $ beenKicked n a) = rejoinChannel $ beenKicked n a
     | null msg'           = return () -- Ignore because not PRIVMSG.
-    | chan' == n          = if (head $ head msg') == '!' then evalCmd who' who' msg' -- Evaluate command (the double "who" is significant).
+    | chan' == n          = if (head $ head msg') == '!' then evalCmd who' who' o msg' -- Evaluate command (the double "who" is significant).
                             else reply [] who' msg' -- Respond to PM.
     | spokenTo n msg'     = if (head $ head $ tail msg') == '!'
-                            then evalCmd chan' who' (joinWords '"' (tail msg')) -- Evaluate command.
+                            then evalCmd chan' who' o (joinWords '"' (tail msg')) -- Evaluate command.
                             else reply chan' who' (tail msg') -- Respond upon being addressed.
     | otherwise           = return ()
     -- | otherwise         = processMsg chan' who' msg' -- Process message.
@@ -248,43 +255,43 @@ reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg
 --processMsg chan' who' msg' =
 
 -- Evaluate commands.
-evalCmd :: String -> String -> [String] -> Net ()
-evalCmd _ b (x:xs) | x == "!quit"      = if b == owner then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
-evalCmd _ b (x:xs) | x == "!join"      = if b == owner then joinChannel "JOIN" xs else return ()
-evalCmd _ b (x:xs) | x == "!part"      = if b == owner then joinChannel "PART" xs else return ()
-evalCmd a b (x:xs) | x == "!setparam"  = if b == owner then case (length xs) of
+evalCmd :: String -> String -> String -> [String] -> Net ()
+evalCmd _ b o (x:xs) | x == "!quit"      = if b == o then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
+evalCmd _ b o (x:xs) | x == "!join"      = if b == o then joinChannel "JOIN" xs else return ()
+evalCmd _ b o (x:xs) | x == "!part"      = if b == o then joinChannel "PART" xs else return ()
+evalCmd a b o (x:xs) | x == "!setparam"  = if b == o then case (length xs) of
                                                               2 -> changeParam (xs!!0) (xs!!1)
                                                               _ -> replyMsg a b "Usage: !setparam parameter value"
                                                        else return ()
-evalCmd a b (x:xs) | x == "!params"    = if b == owner then replyMsg a b (init (concat $ map (++ " ") $ map show $ init allParams)) else return ()
-evalCmd a b (x:xs) | x == "!related"   =
+evalCmd a b o (x:xs) | x == "!params"    = if b == o then replyMsg a b (init (concat $ map (++ " ") $ map show $ init allParams)) else return ()
+evalCmd a b o (x:xs) | x == "!related"   =
     case (length xs) of
       3 -> wnRelated a b (xs!!0) (xs!!1) (xs!!2)
       2 -> wnRelated a b (xs!!0) (xs!!1) []
       1 -> wnRelated a b (xs!!0) []      []
       _ -> replyMsg a b "Usage: !related word [form] [part-of-speech]"
-evalCmd a b (x:xs) | x == "!closure"   =
+evalCmd a b o (x:xs) | x == "!closure"   =
     case (length xs) of
       3 -> wnClosure a b (xs!!0) (xs!!1) (xs!!2)
       2 -> wnClosure a b (xs!!0) (xs!!1) []
       1 -> wnClosure a b (xs!!0) []      []
       _ -> replyMsg a b "Usage: !closure word [form] [part-of-speech]"
-evalCmd a b (x:xs) | x == "!gloss"     =
+evalCmd a b o (x:xs) | x == "!gloss"     =
     case (length xs) of
       2 -> wnGloss a b (xs!!0) (xs!!1)
       1 -> wnGloss a b (xs!!0) []
       _ -> replyMsg a b "Usage: !gloss word [part-of-speech]"
-evalCmd a b (x:xs) | x == "!meet"      =
+evalCmd a b o (x:xs) | x == "!meet"      =
     case (length xs) of
       3 -> wnMeet a b (xs!!0) (xs!!1) (xs!!2)
       2 -> wnMeet a b (xs!!0) (xs!!1) []
       _ -> replyMsg a b "Usage: !meet word word [part-of-speech]"
-evalCmd a b (x:xs) | x == "!forms"     = replyMsg a b (init (concat $ map (++ " ") $ map show $ init allForm))
-evalCmd a b (x:xs) | x == "!parts"     = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
-evalCmd a b (x:xs) | x == "!help"      =
-    if b == owner then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !params !setparam !join !part !quit"
+evalCmd a b o (x:xs) | x == "!forms"     = replyMsg a b (init (concat $ map (++ " ") $ map show $ init allForm))
+evalCmd a b o (x:xs) | x == "!parts"     = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
+evalCmd a b o (x:xs) | x == "!help"      =
+    if b == o then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !params !setparam !join !part !quit"
     else replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts"
-evalCmd _ _ _                          = return ()
+evalCmd _ _ _ _                         = return ()
 
 -- Send a message to the channel.
 chanMsg :: String -> String -> Net ()
