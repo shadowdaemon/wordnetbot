@@ -5,7 +5,7 @@ import Data.Maybe
 import Data.Tree (flatten)
 import Network
 import System.Random
---import System.Environment (getArgs, getProgName)
+import System.Environment (getArgs, getProgName)
 --import System.CPUTime
 --import System.Directory
 import System.Exit
@@ -23,17 +23,20 @@ import NLP.WordNet.Prims (indexLookup, senseCount, getSynset, getWords, getGloss
 import NLP.WordNet.PrimTypes
 
 wndir     = "/usr/share/wordnet/dict/"
-server    = "irc.freenode.net"
-port      = 6667
 channels  = ["#lolbots"]
-nick      = "wordnetbot"
 owner     = "fnordmeister"
+nick = do
+    n <- asks nick'
+    nn <- io $ readIORef n
+    return nn
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
 data Bot = Bot {
     socket :: Handle,
     wne :: WordNetEnv,
+    nick' :: IORef String,
+    owner' :: IORef String,
     rejoinkick :: IORef Int,
     maxchanlines :: IORef Int
     }
@@ -69,23 +72,42 @@ main = bracket connect disconnect loop
     disconnect = do hClose . socket ; closeWordNet . wne
     loop st    = catchIOError (runReaderT run st) (const $ return ())
 
--- cmdline = do
---     args <- getArgs
---     prog <- getProgName
+cmdLine :: IO [String]
+cmdLine = do
+    -- server, port, nick, owner, initial channels, Wordnet directory
+    args <- getArgs
+    prog <- getProgName
+    let l            = length args
+    let serverPos    = (maximum $ elemIndices "-server" args) + 1
+    let server       = if l > serverPos then args !! serverPos else ""
+    let portPos      = (maximum $ elemIndices "-port" args) + 1
+    let port         = if l > portPos then args !! portPos else ""
+    let nickPos      = (maximum $ elemIndices "-nick" args) + 1
+    let nick         = if l > nickPos then args !! nickPos else ""
+    let ownerPos     = (maximum $ elemIndices "-owner" args) + 1
+    let owner        = if l > ownerPos then args !! ownerPos else ""
+    return (server : port : nick : owner : [])
 
 -- Connect to the server and return the initial bot state.  Initialize WordNet.
 connect :: IO Bot
 connect = notify $ do
+    args <- cmdLine
+    let server  = args !! 0
+    let port    = read $ args !! 1
+    let nick'   = args !! 2
+    let owner'  = args !! 3
     h <- connectTo server (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
     w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath) 
       (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
+    n <- newIORef nick'
+    o <- newIORef owner'
     rk <- newIORef 0
     m <- newIORef 2
-    return (Bot h w rk m)
+    return (Bot h w n o rk m)
   where
     notify a = bracket_
-        (printf "Connecting to %s ... " server >> hFlush stdout)
+        (printf "Connecting to wherever... " >> hFlush stdout)
         (putStrLn "done.")
         a
 
@@ -123,8 +145,9 @@ changeParam a b = do
 -- Join a channel, and start processing commands.
 run :: Net ()
 run = do
-    write "NICK" nick
-    write "USER" (nick++" 0 * :user")
+    n <- nick
+    write "NICK" n
+    write "USER" (n ++" 0 * :user")
     joinChannel "JOIN" channels
     asks socket >>= listen
 
@@ -132,8 +155,9 @@ run = do
 listen :: Handle -> Net ()
 listen h = forever $ do
     s <- init `fmap` io (hGetLine h)
+    n <- nick
     io (putStrLn s)
-    if ping s then pong s else processLine (words s)
+    if ping s then pong s else processLine n (words s)
   where
     forever a = a >> forever a
     ping x    = "PING :" `isPrefixOf` x
@@ -161,27 +185,27 @@ getChannel :: [String] -> String
 getChannel = head . drop 2
 
 -- Are we being spoken to?
-spokenTo :: [String] -> Bool
-spokenTo []              = False
-spokenTo a
-    | b == nick          = True
-    | b == (nick ++ ":") = True
-    | otherwise          = False
+spokenTo :: String -> [String] -> Bool
+spokenTo n []            = False
+spokenTo n b
+    | c == n          = True
+    | c == (n ++ ":") = True
+    | otherwise       = False
   where
-    b = (head a)
+    c = (head b)
 
 -- Is this a private message?
-isPM :: [String] -> Bool
-isPM [] = False
-isPM a
-    | getChannel a == nick = True
-    | otherwise            = False
+-- isPM :: String -> [String] -> Bool
+-- isPM [] = False
+-- isPM a b
+--     | getChannel b == a = True
+--     | otherwise         = False
 
 -- Have we been kicked from a channel?
-beenKicked :: [String] -> String
-beenKicked [] = []
-beenKicked a
-    | (head $ drop 1 a) == "KICK" = if (head $ drop 3 a) == nick then getChannel a else []
+beenKicked :: String -> [String] -> String
+beenKicked _ [] = []
+beenKicked n a
+    | (head $ drop 1 a) == "KICK" = if (head $ drop 3 a) == n then getChannel a else []
     | otherwise                   = []
 
 rejoinChannel :: String -> Net ()
@@ -195,18 +219,17 @@ rejoinChannel a = do
     rejoin' rkk a h = forkIO (threadDelay (rkk * 1000000) >> hPrintf h "JOIN %s\r\n" a)
 
 -- Process IRC line.
-processLine :: [String] -> Net ()
-processLine [] = return ()
-processLine a
-    | (not $ null $ beenKicked a) = rejoinChannel $ beenKicked a
---  | (beenKicked a) /= [] = rejoinChannel $ beenKicked a
-    | null msg'         = return () -- Ignore because not PRIVMSG.
-    | chan' == nick     = if (head $ head msg') == '!' then evalCmd who' who' msg' -- Evaluate command (the double "who" is significant).
-                          else reply [] who' msg' -- Respond to PM.
-    | spokenTo msg'     = if (head $ head $ tail msg') == '!'
-                          then evalCmd chan' who' (joinWords '"' (tail msg')) -- Evaluate command.
-                          else reply chan' who' (tail msg') -- Respond upon being addressed.
-    | otherwise         = return ()
+processLine :: String -> [String] -> Net ()
+processLine _ [] = return ()
+processLine n a
+    | (not $ null $ beenKicked n a) = rejoinChannel $ beenKicked n a
+    | null msg'           = return () -- Ignore because not PRIVMSG.
+    | chan' == n          = if (head $ head msg') == '!' then evalCmd who' who' msg' -- Evaluate command (the double "who" is significant).
+                            else reply [] who' msg' -- Respond to PM.
+    | spokenTo n msg'     = if (head $ head $ tail msg') == '!'
+                            then evalCmd chan' who' (joinWords '"' (tail msg')) -- Evaluate command.
+                            else reply chan' who' (tail msg') -- Respond upon being addressed.
+    | otherwise           = return ()
     -- | otherwise         = processMsg chan' who' msg' -- Process message.
     -- | otherwise         = reply chan' [] msg' -- Testing.
   where
@@ -218,7 +241,7 @@ processLine a
 reply :: String -> String -> [String] -> Net ()
 reply [] who' msg = privMsg who' "Eh?" -- PM.
 reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  Channel talk.
-reply chan' who' msg = wnReplaceMsg chan' who' msg
+reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg
 
 -- Process messages.
 --processMsg :: String -> String -> [String] -> ReaderT Bot IO ()
