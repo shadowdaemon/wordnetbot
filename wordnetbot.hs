@@ -99,7 +99,7 @@ connect = notify $ do
     args <- cmdLine
     let server  = args !! 0
     let port    = read $ args !! 1
-    let nick    = args !! 2
+    let nick    = cleanNick (args !! 2)
     let owner   = args !! 3
     h <- connectTo server (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
@@ -134,15 +134,16 @@ botNick = do
 changeNick []     = return () :: Net ()
 changeNick (x:xs) = do
     n <- asks nick
-    let a = clean' x
+    let a = cleanNick x
     io $ writeIORef n a
     write "NICK" a
-  where
-    clean' [] = []
-    clean' (x:xs)
-        | isDigit x       = clean' xs
-        | not $ isAscii x = clean' xs
-        | otherwise       = x : clean' xs
+
+cleanNick :: String -> String
+cleanNick [] = []
+cleanNick (x:xs)
+        | isDigit x       = cleanNick xs
+        | not $ isAscii x = cleanNick xs
+        | otherwise       = x : cleanNick xs
 
 -- Join (or leave) a list of channels.
 joinChannel :: String -> [String] -> Net ()
