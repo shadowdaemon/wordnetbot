@@ -25,16 +25,6 @@ import NLP.WordNet.PrimTypes
 wndir     = "/usr/share/wordnet/dict/"
 channels  = ["#lolbots"]
 
-botOwner = do
-    o <- asks owner
-    oo <- io $ readIORef o
-    return oo
-
-botNick = do
-    n <- asks nick
-    nn <- io $ readIORef n
-    return nn
-
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
 data Bot = Bot {
@@ -69,6 +59,15 @@ instance Enum Parameter where
     fromEnum UnknownParam   = 7
     enumFrom i = enumFromTo i UnknownParam
     enumFromThen i j = enumFromThenTo i j UnknownParam
+
+readParam :: String -> Parameter
+readParam a | (map toLower a) == "rejoinkick"      = RejoinKick
+readParam a | (map toLower a) == "rejointimeout"   = RejoinTimeout
+readParam a | (map toLower a) == "rudeness"        = Rudeness
+readParam a | (map toLower a) == "verbosity"       = Verbosity
+readParam a | (map toLower a) == "opcontrol"       = OpControl
+readParam a | (map toLower a) == "maxchanlines"    = MaxChanLines
+readParam _                                        = UnknownParam
 
 -- Set up actions to run on start and end, and run the main loop.
 main :: IO ()
@@ -117,6 +116,20 @@ connect = notify $ do
         (putStrLn "done.")
         a
 
+-- Return owner.
+botOwner :: Net String
+botOwner = do
+    o <- asks owner
+    oo <- io $ readIORef o
+    return oo
+
+-- Return nick.
+botNick :: Net String
+botNick = do
+    n <- asks nick
+    nn <- io $ readIORef n
+    return nn
+
 -- Join (or leave) a list of channels.
 joinChannel :: String -> [String] -> Net ()
 joinChannel _  []    = return () :: Net ()
@@ -126,15 +139,6 @@ joinChannel a (x:xs) = do
       write a x
       joinChannel a xs
     else return ()
-
-readParam :: String -> Parameter
-readParam a | (map toLower a) == "rejoinkick"      = RejoinKick
-readParam a | (map toLower a) == "rejointimeout"   = RejoinTimeout
-readParam a | (map toLower a) == "rudeness"        = Rudeness
-readParam a | (map toLower a) == "verbosity"       = Verbosity
-readParam a | (map toLower a) == "opcontrol"       = OpControl
-readParam a | (map toLower a) == "maxchanlines"    = MaxChanLines
-readParam _                                        = UnknownParam
 
 -- Change bot operating parameters.
 changeParam :: String -> String -> Net ()
