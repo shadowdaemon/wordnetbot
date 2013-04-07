@@ -135,17 +135,18 @@ changeNick []     = return () :: Net ()
 changeNick (x:xs) = do
     h <- asks socket
     n <- asks nick
+    o <- botOwner
     let a = cleanNick x
     write "NICK" a -- Send nick change request.
     s <- init `fmap` io (hGetLine h)
     io (putStrLn s)
     let b = words s
-    if (length b) > 2 then testNick' n a (take 2 (drop 1 b)) else return ()
+    if (length b) > 2 then testNick' n o a (take 2 (drop 1 b)) else return ()
   where
-    testNick' :: IORef String -> String -> [String] -> Net ()
-    testNick' n a w
+    testNick' :: IORef String -> String -> String -> [String] -> Net ()
+    testNick' n o a w
         | (x == "NICK") && (drop 1 y) == a = io $ writeIORef n a -- Test for success, update IORef.
-        | otherwise                        = return ()
+        | otherwise                        = return "Nick change failed!" >>= privMsg o
       where
         x = head w
         y = last w
