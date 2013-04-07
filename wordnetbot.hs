@@ -310,7 +310,7 @@ evalCmd a b o (x:xs) | x == "!meet"      =
 evalCmd a b o (x:xs) | x == "!forms"     = replyMsg a b (init (concat $ map (++ " ") $ map show $ init allForm))
 evalCmd a b o (x:xs) | x == "!parts"     = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
 evalCmd a b o (x:xs) | x == "!help"      =
-    if b == o then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !params !setparam !join !part !quit"
+    if b == o then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !params !setparam !nick !join !part !quit"
     else replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts"
 evalCmd _ _ _ _                          = return ()
 
