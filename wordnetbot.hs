@@ -234,25 +234,25 @@ processLine :: String -> String -> [String] -> Net ()
 processLine _ _ [] = return ()
 processLine n o a
     | (not $ null $ beenKicked n a) = rejoinChannel $ beenKicked n a
-    | null msg'           = return () -- Ignore because not PRIVMSG.
-    | chan' == n          = if (head $ head msg') == '!' then evalCmd who' who' o msg' -- Evaluate command (the double "who" is significant).
-                            else reply [] who' msg' -- Respond to PM.
-    | spokenTo n msg'     = if (head $ head $ tail msg') == '!'
-                            then evalCmd chan' who' o (joinWords '"' (tail msg')) -- Evaluate command.
-                            else reply chan' who' (tail msg') -- Respond upon being addressed.
+    | null msg            = return () -- Ignore because not PRIVMSG.
+    | chan == n           = if (head $ head msg) == '!' then evalCmd who who o msg -- Evaluate command (the double "who" is significant).
+                            else reply [] who msg -- Respond to PM.
+    | spokenTo n msg      = if (head $ head $ tail msg) == '!'
+                            then evalCmd chan who o (joinWords '"' (tail msg)) -- Evaluate command.
+                            else reply chan who (tail msg) -- Respond upon being addressed.
     | otherwise           = return ()
-    -- | otherwise         = processMsg chan' who' msg' -- Process message.
-    -- | otherwise         = reply chan' [] msg' -- Testing.
+    -- | otherwise         = processMsg chan who msg -- Process message.
+    -- | otherwise         = reply chan [] msg -- Testing.
   where
-    msg' = getMsg a
-    who' = getNick a
-    chan' = getChannel a
+    msg  = getMsg a
+    who  = getNick a
+    chan = getChannel a
 
 -- Reply to message.
 reply :: String -> String -> [String] -> Net ()
-reply [] who' msg = privMsg who' "Eh?" -- PM.
-reply chan' [] msg  = chanMsg chan' $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  Channel talk.
-reply chan' who' msg = replyMsg chan' who' $ reverse $ unwords msg
+reply []   who msg = privMsg who "Eh?" -- PM.
+reply chan []  msg = chanMsg chan $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  Channel talk.
+reply chan who msg = replyMsg chan who $ reverse $ unwords msg
 
 -- Process messages.
 --processMsg :: String -> String -> [String] -> ReaderT Bot IO ()
