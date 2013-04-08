@@ -210,7 +210,6 @@ listen h = forever $ do
 getMsg :: [String] -> [String]
 getMsg [] = []
 getMsg a
-    | (length a) < 5                 = []
     | (head $ drop 1 a) == "PRIVMSG" = (drop 1 (a!!3)) : (drop 4 a)
     | otherwise                      = []
 
@@ -265,7 +264,7 @@ processLine n o a
     | null msg            = return () -- Ignore because not PRIVMSG.
     | chan == n           = if (head $ head msg) == '!' then evalCmd who who o msg -- Evaluate command (the double "who" is significant).
                             else reply [] who msg -- Respond to PM.
-    | spokenTo n msg      = if (head $ head $ tail msg) == '!'
+    | spokenTo n msg      = if null (tail msg) then return () else if (head $ head $ tail msg) == '!'
                             then evalCmd chan who o (joinWords '"' (tail msg)) -- Evaluate command.
                             else reply chan who (tail msg) -- Respond upon being addressed.
     | otherwise           = return ()
@@ -280,7 +279,8 @@ processLine n o a
 reply :: String -> String -> [String] -> Net ()
 reply []   who msg = privMsg who "Eh?" -- PM.
 reply chan []  msg = chanMsg chan $ reverse $ unwords msg -- Cheesy reverse gimmick, for testing.  Channel talk.
-reply chan who msg = replyMsg chan who $ reverse $ unwords msg
+--reply chan who msg = replyMsg chan who $ reverse $ unwords msg
+reply chan who msg = wnReplaceMsg chan who msg
 
 -- Process messages.
 --processMsg :: String -> String -> [String] -> ReaderT Bot IO ()
@@ -496,3 +496,24 @@ wnMeet a b c d e  = do
     let result = runs w (meet emptyQueue (head $ search (wnFixWord c) wnPos 1) (head $ search (wnFixWord d) wnPos 1))
     if (isNothing result) then return "Nothing!" >>= replyMsg a b else
       return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ getWords $ getSynset (fromJust result)) >>= replyMsg a b
+
+wnReplaceWord :: String -> Net String
+wnReplaceWord a = do
+    w <- asks wne
+    wnPos <- wnPartPOS (wnFixWord a)
+    let result1 = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) wnPos AllSenses)))
+    let result2 = concat $ map (getWords . getSynset) (concat result1)
+    r <- rand (length result2)
+    if (null result1) || (null $ concat result1) then return a
+    else return (replace '_' ' ' $ (result2 !! r))
+  where
+    rand b = io $ getStdRandom (randomR (0, (b - 1)))
+
+wnReplaceMsg a b c  = do
+    let l = length c
+    if l > 2 then do
+      w1 <- wnReplaceWord $ c !! 0
+      w2 <- wnReplaceWord $ c !! 1
+      w3 <- wnReplaceWord $ c !! 2
+      return (w1 ++ " " ++ w2 ++ " " ++ w3) >>= replyMsg a b
+    else return "" >>= replyMsg a b
