@@ -437,7 +437,7 @@ wnPartPOS a  = do
 -- Wordnet search.
 wnPart :: String -> String -> String -> Net ()
 wnPart a b c = do
-    wnPartString a >>= replyMsg a b
+    wnPartString c >>= replyMsg a b
 
 -- Wordnet search.
 wnRelated :: String -> String -> String -> String -> String -> Net ()
