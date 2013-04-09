@@ -438,7 +438,7 @@ wnRelated a b c d  e  = do
   where
     wnRelated' _ _ []     = return ()
     wnRelated' a b (x:xs) = do
-      if (null x) then return () -- Redundant?
+      if (null x) then return ()
       else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset) x) >>= replyMsg a b
       wnRelated' a b xs
 
@@ -508,10 +508,26 @@ wnReplaceWord a b = do
     let result1 = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) wnPos AllSenses)))
     let result2 = concat $ map (getWords . getSynset) (concat result1)
     r <- rand (length result2)
-    if (null result1) || (null $ concat result1) then return a
+    if (null result1) || (null $ concat result1) then wnReplaceWord2 a
     else return (replace '_' ' ' $ (result2 !! r))
   where
     rand b = io $ getStdRandom (randomR (0, (b - 1)))
+
+wnReplaceWord2 :: String -> Net String
+wnReplaceWord2 a = do
+    w <- asks wne
+    wnPos <- wnPartPOS (wnFixWord a)
+    let result1 = runs w (closureOnList Hypernym (search (wnFixWord a) wnPos AllSenses)) -- [Maybe (Tree SearchResult)]
+    let result2 = (nub $ concat $ map (getWords . getSynset) (concat (map flatten (blah result1)))) \\ [a]
+    r <- rand (length result2)
+    if null result2 then return a
+    else return (replace '_' ' ' $ (result2 !! r))
+  where
+    rand b = io $ getStdRandom (randomR (0, (b - 1)))
+    blah [] = []
+    blah (x:xs)
+        | isNothing x = blah xs
+        | otherwise   = (fromJust x) : blah xs
 
 wnReplaceMsg :: String -> String -> [String] -> Net ()
 wnReplaceMsg _ _ [] = return () :: Net ()
