@@ -295,7 +295,7 @@ evalCmd _ b o (x:xs) | x == "!nick"      = if b == o then changeNick xs else ret
 evalCmd a b o (x:xs) | x == "!setparam"  = if b == o then case (length xs) of
                                                               2 -> changeParam (xs!!0) (xs!!1)
                                                               _ -> replyMsg a b "Usage: !setparam parameter value"
-                                                      else return ()
+                                                     else return ()
 evalCmd a b o (x:xs) | x == "!params"    = if b == o then replyMsg a b (init (concat $ map (++ " ") $ map show $ init allParams)) else return ()
 evalCmd a b o (x:xs) | x == "!related"   =
     case (length xs) of
@@ -377,6 +377,10 @@ joinWords a (x:xs)
 wnFixWord :: String -> String
 wnFixWord = strip '"' . replace ' ' '_'
 
+-- Get the length of a list of lists but don't count null lists.
+wnLength :: [[a]] -> Int
+wnLength a = (length a) - (length $ elemIndices True (map null a))
+
 -- Try to determine most common POS for word.
 wnPartString :: String -> Net String
 wnPartString a = do
@@ -430,7 +434,7 @@ wnRelated a b c d  e  = do
     let wnPos = fromEPOS $ readEPOS e
     let result = fromMaybe [[]] (runs w (relatedByList wnForm (search (wnFixWord c) wnPos AllSenses)))
     if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else
-      if (length result) > mm then wnRelated' b b result else wnRelated' a b result -- Redirect reply to prevent channel spam.
+      if (wnLength result) > mm then wnRelated' b b result else wnRelated' a b result -- Redirect reply to prevent channel spam.
   where
     wnRelated' _ _ []     = return ()
     wnRelated' a b (x:xs) = do
