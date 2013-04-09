@@ -295,7 +295,7 @@ reply chan who msg = wnReplaceMsg chan who msg
 -- Evaluate commands.
 evalCmd :: String -> String -> String -> [String] -> Net ()
 evalCmd _ b o (x:xs) | x == "!quit"      = if b == o then case (length xs) of
-                                                              0 -> write "QUIT" ":Bye!" >> io (exitWith ExitSuccess)
+                                                              0 -> write "QUIT" ":Bye" >> io (exitWith ExitSuccess)
                                                               _ -> write "QUIT" (":" ++ unwords xs) >> io (exitWith ExitSuccess)
                                                      else return ()
 evalCmd _ b o (x:xs) | x == "!join"      = if b == o then joinChannel "JOIN" xs else return ()
@@ -392,7 +392,8 @@ wnLength a = (length a) - (length $ elemIndices True (map null a))
 
 -- Try to determine most common POS for word.
 wnPartString :: String -> Net String
-wnPartString a = do
+wnPartString [] = return "Other"
+wnPartString a  = do
     w <- asks wne
     ind1 <- io $ indexLookup w a Noun
     ind2 <- io $ indexLookup w a Verb
@@ -411,7 +412,8 @@ wnPartString a = do
 
 -- Try to determine most common POS for word.
 wnPartPOS :: String -> Net POS
-wnPartPOS a = do
+wnPartPOS [] = return Adj
+wnPartPOS a  = do
     w <- asks wne
     ind1 <- io $ indexLookup w a Noun
     ind2 <- io $ indexLookup w a Verb
@@ -518,8 +520,9 @@ wnMeet a b c d e  = do
 wnReplaceWord :: String -> String -> Net String
 wnReplaceWord a b = do
     w <- asks wne
-    wnPos <- wnPartPOS (wnFixWord a)
-    let result1 = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) wnPos AllSenses)))
+    wnPos1 <- wnPartPOS (wnFixWord a)
+    wnPos2 <- wnPartPOS (wnFixWord b)
+    let result1 = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) wnPos1 AllSenses)))
     let result2 = concat $ map (getWords . getSynset) (concat result1)
     r <- rand (length result2)
     if (null result1) || (null $ concat result1) then wnReplaceWord2 a
