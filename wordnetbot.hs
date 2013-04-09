@@ -509,11 +509,25 @@ wnReplaceWord a = do
   where
     rand b = io $ getStdRandom (randomR (0, (b - 1)))
 
-wnReplaceMsg a b c  = do
-    let l = length c
-    if l > 2 then do
-      w1 <- wnReplaceWord $ c !! 0
-      w2 <- wnReplaceWord $ c !! 1
-      w3 <- wnReplaceWord $ c !! 2
-      return (w1 ++ " " ++ w2 ++ " " ++ w3) >>= replyMsg a b
-    else return "" >>= replyMsg a b
+wnReplaceMsg :: String -> String -> [String] -> Net ()
+wnReplaceMsg _ _ [] = return () :: Net ()
+wnReplaceMsg a b c  = wnReplaceMsg' 0 a b c
+  where
+    wnReplaceMsg' n a b c = do
+      if n == 0 then replyMsg' a b else return ()
+      if (length c) > 2 then do
+        w1 <- wnReplaceWord $ c !! 0
+        w2 <- wnReplaceWord $ c !! 1
+        w3 <- wnReplaceWord $ c !! 2
+        return (w1 ++ " " ++ w2 ++ " " ++ w3 ++ " ") >>= write'
+        wnReplaceMsg' (n + 1) a b (drop 3 c) >> return ()
+      else return "\r\n" >>= write'
+    replyMsg' :: String -> String -> Net ()
+    replyMsg' chan nick
+        | chan == nick  = write' ("PRIVMSG " ++ nick ++ " :") -- PM.
+        | otherwise     = write' ("PRIVMSG " ++ chan ++ " :" ++ nick ++ ": ")
+    write' :: String -> Net ()
+    write' s = do
+        h <- asks socket
+        io $ hPrintf h "%s" s
+        io $ printf    "> %s" s
