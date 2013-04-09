@@ -83,15 +83,20 @@ cmdLine = do
     args <- getArgs
     prog <- getProgName
     let l            = length args
-    let serverPos    = (maximum $ elemIndices "-server" args) + 1
-    let server       = if l > serverPos then args !! serverPos else ""
-    let portPos      = (maximum $ elemIndices "-port" args) + 1
-    let port         = if l > portPos then args !! portPos else ""
-    let nickPos      = (maximum $ elemIndices "-nick" args) + 1
-    let nick         = if l > nickPos then args !! nickPos else ""
-    let ownerPos     = (maximum $ elemIndices "-owner" args) + 1
-    let owner        = if l > ownerPos then args !! ownerPos else ""
+    let serverPos    = (maximum' $ elemIndices "-server" args) + 1
+    let server       = if l > serverPos then args !! serverPos else "irc.freenode.net"
+    let portPos      = (maximum' $ elemIndices "-port" args) + 1
+    let port         = if l > portPos then args !! portPos else "6667"
+    let nickPos      = (maximum' $ elemIndices "-nick" args) + 1
+    let nick         = if l > nickPos then args !! nickPos else "wordnetbot"
+    let ownerPos     = (maximum' $ elemIndices "-owner" args) + 1
+    let owner        = if l > ownerPos then args !! ownerPos else "shadowdaemon"
+    let channelPos   = (maximum' $ elemIndices "-channel" args) + 1
+    let channel      = if l > channelPos then args !! channelPos else "#botwar"
     return (server : port : nick : owner : [])
+  where
+    maximum' [] = 0
+    maximum' a  = maximum a
 
 -- Connect to the server and return the initial bot state.  Initialize WordNet.
 connect :: IO Bot
@@ -501,6 +506,11 @@ wnMeet a b c d e  = do
     if (isNothing result) then return "Nothing!" >>= replyMsg a b else
       return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ getWords $ getSynset (fromJust result)) >>= replyMsg a b
 
+
+
+{- Fun stuff. -}
+
+-- Replace a word.
 wnReplaceWord :: String -> String -> Net String
 wnReplaceWord a b = do
     w <- asks wne
@@ -513,6 +523,7 @@ wnReplaceWord a b = do
   where
     rand b = io $ getStdRandom (randomR (0, (b - 1)))
 
+-- Replace a word.
 wnReplaceWord2 :: String -> Net String
 wnReplaceWord2 a = do
     w <- asks wne
@@ -529,6 +540,7 @@ wnReplaceWord2 a = do
         | isNothing x = blah xs
         | otherwise   = (fromJust x) : blah xs
 
+-- Munge sentence.
 wnReplaceMsg :: String -> String -> [String] -> Net ()
 wnReplaceMsg _ _ [] = return () :: Net ()
 wnReplaceMsg a b c  = wnReplaceMsg' 0 a b c
