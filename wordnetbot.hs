@@ -328,11 +328,15 @@ evalCmd a b o (x:xs) | x == "!meet"      =
       3 -> wnMeet a b (xs!!0) (xs!!1) (xs!!2)
       2 -> wnMeet a b (xs!!0) (xs!!1) []
       _ -> replyMsg a b "Usage: !meet word word [part-of-speech]"
+evalCmd a b o (x:xs) | x == "!type"      =
+    case (length xs) of
+      1 -> wnPart a b (xs!!0)
+      _ -> replyMsg a b "Usage: !type word"
 evalCmd a b o (x:xs) | x == "!forms"     = replyMsg a b (init (concat $ map (++ " ") $ map show $ init allForm))
 evalCmd a b o (x:xs) | x == "!parts"     = replyMsg a b (init (concat $ map (++ " ") $ map show allPOS))
 evalCmd a b o (x:xs) | x == "!help"      =
-    if b == o then replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts !params !setparam !nick !join !part !quit"
-    else replyMsg a b "Commands: !related !closure !gloss !meet !forms !parts"
+    if b == o then replyMsg a b "Commands: !related !closure !gloss !type !meet !forms !parts !params !setparam !nick !join !part !quit"
+    else replyMsg a b "Commands: !related !closure !gloss !type !meet !forms !parts"
 evalCmd _ _ _ _                          = return ()
 
 -- Send a message to the channel.
@@ -392,7 +396,7 @@ wnLength a = (length a) - (length $ elemIndices True (map null a))
 
 -- Try to determine most common POS for word.
 wnPartString :: String -> Net String
-wnPartString [] = return "Adj"
+wnPartString [] = return "Unknown"
 wnPartString a  = do
     w <- asks wne
     ind1 <- io $ indexLookup w a Noun
@@ -408,7 +412,7 @@ wnPartString a  = do
       | fromMaybe (-1) (elemIndex (maximum a) a) == 1 = "Verb"
       | fromMaybe (-1) (elemIndex (maximum a) a) == 2 = "Adj"
       | fromMaybe (-1) (elemIndex (maximum a) a) == 3 = "Adv"
-      | otherwise                                     = "Adj"
+      | otherwise                                     = "Unknown"
 
 -- Try to determine most common POS for word.
 wnPartPOS :: String -> Net POS
@@ -429,6 +433,11 @@ wnPartPOS a  = do
       | fromMaybe (-1) (elemIndex (maximum a) a) == 2 = Adj
       | fromMaybe (-1) (elemIndex (maximum a) a) == 3 = Adv
       | otherwise                                     = Adj
+
+-- Wordnet search.
+wnPart :: String -> String -> String -> Net ()
+wnPart a b c = do
+    wnPartString a >>= replyMsg a b
 
 -- Wordnet search.
 wnRelated :: String -> String -> String -> String -> String -> Net ()
