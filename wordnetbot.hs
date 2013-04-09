@@ -294,7 +294,10 @@ reply chan who msg = wnReplaceMsg chan who msg
 
 -- Evaluate commands.
 evalCmd :: String -> String -> String -> [String] -> Net ()
-evalCmd _ b o (x:xs) | x == "!quit"      = if b == o then write "QUIT" ":Bye!" >> io (exitWith ExitSuccess) else return ()
+evalCmd _ b o (x:xs) | x == "!quit"      = if b == o then case (length xs) of
+                                                              0 -> write "QUIT" ":Bye!" >> io (exitWith ExitSuccess)
+                                                              _ -> write "QUIT" (":" ++ unwords xs) >> io (exitWith ExitSuccess)
+                                                     else return ()
 evalCmd _ b o (x:xs) | x == "!join"      = if b == o then joinChannel "JOIN" xs else return ()
 evalCmd _ b o (x:xs) | x == "!part"      = if b == o then joinChannel "PART" xs else return ()
 evalCmd _ b o (x:xs) | x == "!nick"      = if b == o then changeNick xs else return ()
