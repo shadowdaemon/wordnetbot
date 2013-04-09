@@ -328,17 +328,17 @@ evalCmd _ _ _ _                          = return ()
 
 -- Send a message to the channel.
 chanMsg :: String -> String -> Net ()
-chanMsg chan' msg = write "PRIVMSG" (chan' ++ " :" ++ msg)
+chanMsg chan msg = write "PRIVMSG" (chan ++ " :" ++ msg)
 
 -- Send a reply message.
 replyMsg :: String -> String -> String -> Net ()
-replyMsg chan' nick' msg
-    | chan' == nick'  = write "PRIVMSG" (nick' ++ " :" ++ msg) -- PM.
-    | otherwise       = write "PRIVMSG" (chan' ++ " :" ++ nick' ++ ": " ++ msg)
+replyMsg chan nick msg
+    | chan == nick   = write "PRIVMSG" (nick ++ " :" ++ msg) -- PM.
+    | otherwise      = write "PRIVMSG" (chan ++ " :" ++ nick ++ ": " ++ msg)
 
 -- Send a private message.
 privMsg :: String -> String -> Net ()
-privMsg nick' msg = write "PRIVMSG" (nick' ++ " :" ++ msg)
+privMsg nick msg = write "PRIVMSG" (nick ++ " :" ++ msg)
 
 -- Send a message out to the server we're currently connected to.
 write :: String -> String -> Net ()
