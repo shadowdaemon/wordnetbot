@@ -22,8 +22,6 @@ import NLP.WordNet
 import NLP.WordNet.Prims (indexLookup, senseCount, getSynset, getWords, getGloss)
 import NLP.WordNet.PrimTypes
 
-wndir     = "/usr/share/wordnet/dict/"
-
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
 data Bot = Bot {
@@ -115,7 +113,9 @@ cmdLine = do
     let owner        = if l > ownerPos then args !! ownerPos else "shadowdaemon"
     let channelPos   = (maximum' $ elemIndices "-channel" args) + 1
     let channel      = if l > channelPos then args !! channelPos else "#botwar"
-    return (server : port : nick : owner : channel : [])
+    let wndirPos     = (maximum' $ elemIndices "-wndir" args) + 1
+    let wndir        = if l > wndirPos then args !! wndirPos else "/usr/share/wordnet/dict/"
+    return (server : port : nick : owner : channel : wndir : [])
   where
     maximum' [] = 1000 -- If command line parameter not given, will cause parameter to default.
     maximum' a  = maximum a
@@ -128,6 +128,7 @@ connect = notify $ do
     let port    = read $ args !! 1
     let nick    = cleanNick (args !! 2)
     let owner   = args !! 3
+    let wndir   = args !! 5
     h <- connectTo server (PortNumber (fromIntegral port))
     hSetBuffering h NoBuffering
     w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath) 
@@ -293,7 +294,7 @@ reply chan who msg = wnReplaceMsg chan who msg
 
 -- Evaluate commands.
 evalCmd :: String -> String -> String -> [String] -> Net ()
-evalCmd _ b o (x:xs) | x == "!quit"      = if b == o then write "QUIT" ":Exiting" >> io (exitWith ExitSuccess) else return ()
+evalCmd _ b o (x:xs) | x == "!quit"      = if b == o then write "QUIT" ":Bye!" >> io (exitWith ExitSuccess) else return ()
 evalCmd _ b o (x:xs) | x == "!join"      = if b == o then joinChannel "JOIN" xs else return ()
 evalCmd _ b o (x:xs) | x == "!part"      = if b == o then joinChannel "PART" xs else return ()
 evalCmd _ b o (x:xs) | x == "!nick"      = if b == o then changeNick xs else return ()
