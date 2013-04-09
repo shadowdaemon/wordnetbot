@@ -23,7 +23,6 @@ import NLP.WordNet.Prims (indexLookup, senseCount, getSynset, getWords, getGloss
 import NLP.WordNet.PrimTypes
 
 wndir     = "/usr/share/wordnet/dict/"
-channels  = ["#lolbots"]
 
 -- The 'Net' monad, a wrapper over IO, carrying the bot's immutable state.
 type Net = ReaderT Bot IO
@@ -79,7 +78,6 @@ main = bracket connect disconnect loop
 -- Get command line options.
 cmdLine :: IO [String]
 cmdLine = do
-    -- server, port, nick, owner, initial channels, Wordnet directory
     args <- getArgs
     prog <- getProgName
     let l            = length args
@@ -93,9 +91,9 @@ cmdLine = do
     let owner        = if l > ownerPos then args !! ownerPos else "shadowdaemon"
     let channelPos   = (maximum' $ elemIndices "-channel" args) + 1
     let channel      = if l > channelPos then args !! channelPos else "#botwar"
-    return (server : port : nick : owner : [])
+    return (server : port : nick : owner : channel : [])
   where
-    maximum' [] = 0
+    maximum' [] = 1000 -- If command line parameter not given, will cause parameter to default.
     maximum' a  = maximum a
 
 -- Connect to the server and return the initial bot state.  Initialize WordNet.
@@ -187,10 +185,12 @@ changeParam a b = do
 -- Join a channel, and start processing commands.
 run :: Net ()
 run = do
+    args <- io cmdLine
     n <- botNick
+    let channel = args !! 4
     write "NICK" n
     write "USER" (n ++" 0 * :user")
-    joinChannel "JOIN" channels
+    joinChannel "JOIN" [channel]
     asks socket >>= listen
 
 -- Process each line from the server (this needs flood prevention somewhere).
