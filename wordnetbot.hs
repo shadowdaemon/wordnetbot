@@ -392,7 +392,7 @@ wnLength a = (length a) - (length $ elemIndices True (map null a))
 
 -- Try to determine most common POS for word.
 wnPartString :: String -> Net String
-wnPartString [] = return "Other"
+wnPartString [] = return "Adj"
 wnPartString a  = do
     w <- asks wne
     ind1 <- io $ indexLookup w a Noun
@@ -408,7 +408,7 @@ wnPartString a  = do
       | fromMaybe (-1) (elemIndex (maximum a) a) == 1 = "Verb"
       | fromMaybe (-1) (elemIndex (maximum a) a) == 2 = "Adj"
       | fromMaybe (-1) (elemIndex (maximum a) a) == 3 = "Adv"
-      | otherwise                                     = "Other"
+      | otherwise                                     = "Adj"
 
 -- Try to determine most common POS for word.
 wnPartPOS :: String -> Net POS
@@ -433,10 +433,10 @@ wnPartPOS a  = do
 -- Wordnet search.
 wnRelated :: String -> String -> String -> String -> String -> Net ()
 wnRelated a b [] _ _  = return () :: Net ()
+wnRelated a b c [] _  = wnRelated a b c "Hypernym" []
 wnRelated a b c  d [] = do
     wnPos <- wnPartString (wnFixWord c) -- POS not given so use most common.
     wnRelated a b c d wnPos
-wnRelated a b c [] _  = wnRelated a b c "Hypernym" []
 wnRelated a b c d  e  = do
     w <- asks wne
     m <- asks maxchanlines
@@ -456,10 +456,10 @@ wnRelated a b c d  e  = do
 -- Wordnet search.
 wnClosure :: String -> String -> String -> String -> String -> Net ()
 wnClosure a b [] _ _  = return () :: Net ()
+wnClosure a b c [] _  = wnClosure a b c "Hypernym" []
 wnClosure a b c  d [] = do
     wnPos <- wnPartString (wnFixWord c) -- POS not given so use most common.
     wnClosure a b c d wnPos
-wnClosure a b c [] _  = wnClosure a b c "Hypernym" []
 wnClosure a b c d  e  = do
     w <- asks wne
     m <- asks maxchanlines
