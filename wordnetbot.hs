@@ -75,6 +75,30 @@ main = bracket connect disconnect loop
     disconnect = do hClose . socket ; closeWordNet . wne
     loop st    = catchIOError (runReaderT run st) (const $ return ())
 
+-- Join a channel, and start processing commands.
+run :: Net ()
+run = do
+    args <- io cmdLine
+    n <- botNick
+    let channel = args !! 4
+    write "NICK" n
+    write "USER" (n ++" 0 * :user")
+    joinChannel "JOIN" [channel]
+    asks socket >>= listen
+
+-- Process each line from the server (this needs flood prevention somewhere).
+listen :: Handle -> Net ()
+listen h = forever $ do
+    s <- init `fmap` io (hGetLine h)
+    n <- botNick
+    o <- botOwner
+    io (putStrLn s)
+    if ping s then pong s else processLine n o (words s)
+  where
+    forever a = a >> forever a
+    ping x    = "PING :" `isPrefixOf` x
+    pong x    = write "PONG" (':' : drop 6 x)
+
 -- Get command line options.
 cmdLine :: IO [String]
 cmdLine = do
@@ -181,30 +205,6 @@ changeParam a b = do
       RejoinKick   -> io $ writeIORef rk (read b)
       MaxChanLines -> io $ writeIORef m (read b)
       _            -> return ()
-
--- Join a channel, and start processing commands.
-run :: Net ()
-run = do
-    args <- io cmdLine
-    n <- botNick
-    let channel = args !! 4
-    write "NICK" n
-    write "USER" (n ++" 0 * :user")
-    joinChannel "JOIN" [channel]
-    asks socket >>= listen
-
--- Process each line from the server (this needs flood prevention somewhere).
-listen :: Handle -> Net ()
-listen h = forever $ do
-    s <- init `fmap` io (hGetLine h)
-    n <- botNick
-    o <- botOwner
-    io (putStrLn s)
-    if ping s then pong s else processLine n o (words s)
-  where
-    forever a = a >> forever a
-    ping x    = "PING :" `isPrefixOf` x
-    pong x    = write "PONG" (':' : drop 6 x)
 
 -- getCPUTimeSecs :: IO Double
 -- getCPUTimeSecs = do
