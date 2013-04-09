@@ -497,8 +497,8 @@ wnMeet a b c d e  = do
     if (isNothing result) then return "Nothing!" >>= replyMsg a b else
       return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ getWords $ getSynset (fromJust result)) >>= replyMsg a b
 
-wnReplaceWord :: String -> Net String
-wnReplaceWord a = do
+wnReplaceWord :: String -> String -> Net String
+wnReplaceWord a b = do
     w <- asks wne
     wnPos <- wnPartPOS (wnFixWord a)
     let result1 = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) wnPos AllSenses)))
@@ -514,14 +514,23 @@ wnReplaceMsg _ _ [] = return () :: Net ()
 wnReplaceMsg a b c  = wnReplaceMsg' 0 a b c
   where
     wnReplaceMsg' n a b c = do
+      let l = length c
       if n == 0 then replyMsg' a b else return ()
-      if (length c) > 2 then do
-        w1 <- wnReplaceWord $ c !! 0
-        w2 <- wnReplaceWord $ c !! 1
-        w3 <- wnReplaceWord $ c !! 2
-        return (w1 ++ " " ++ w2 ++ " " ++ w3 ++ " ") >>= write'
-        wnReplaceMsg' (n + 1) a b (drop 3 c) >> return ()
-      else return "\r\n" >>= write'
+      -- if l > 1 then do
+      --   w1 <- wnReplaceWord (c!!0)
+      --   w2 <- wnReplaceWord (c!!1)
+      --   return (w1 ++ " " ++ w2 ++ " ") >>= write'
+      --   wnReplaceMsg' (n + 1) a b (drop 2 c) >> return ()
+      -- else return "\r\n" >>= write'
+      -- if l > 0 then do
+      --   w <- wnReplaceWord (c!!0)
+      --   return (w ++ " ") >>= write'
+      --   wnReplaceMsg' (n + 1) a b (drop 1 c) >> return ()
+      -- else return "\r\n" >>= write'
+      case l of
+        0 -> return "\r\n" >>= write'
+        1 -> do w <- wnReplaceWord (c!!0) ""     ; return (w ++ " ") >>= write' ; wnReplaceMsg' (n + 1) a b (drop 1 c) >> return ()
+        _ -> do w <- wnReplaceWord (c!!0) (c!!1) ; return (w ++ " ") >>= write' ; wnReplaceMsg' (n + 1) a b (drop 1 c) >> return ()        
     replyMsg' :: String -> String -> Net ()
     replyMsg' chan nick
         | chan == nick  = write' ("PRIVMSG " ++ nick ++ " :") -- PM.
@@ -530,4 +539,4 @@ wnReplaceMsg a b c  = wnReplaceMsg' 0 a b c
     write' s = do
         h <- asks socket
         io $ hPrintf h "%s" s
-        io $ printf    "> %s" s
+        io $ printf "%s" s
