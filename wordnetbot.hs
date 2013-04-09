@@ -522,30 +522,32 @@ wnReplaceWord a b = do
     w <- asks wne
     wnPos1 <- wnPartPOS (wnFixWord a)
     wnPos2 <- wnPartPOS (wnFixWord b)
-    let result1 = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) wnPos1 AllSenses)))
+    let wnPos3 = newPos wnPos1 wnPos2
+    let result1 = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) wnPos3 AllSenses)))
     let result2 = concat $ map (getWords . getSynset) (concat result1)
     r <- rand (length result2)
-    if (null result1) || (null $ concat result1) then wnReplaceWord2 a
+    if (null result1) || (null $ concat result1) then wnReplaceWord2 wnPos3 a
     else return (replace '_' ' ' $ (result2 !! r))
   where
     rand b = io $ getStdRandom (randomR (0, (b - 1)))
+    newPos a b = if a == b && a == Noun then Verb else
+                   if a == Verb then Noun else Adj
 
 -- Replace a word.
-wnReplaceWord2 :: String -> Net String
-wnReplaceWord2 a = do
+wnReplaceWord2 :: POS -> String -> Net String
+wnReplaceWord2 p a = do
     w <- asks wne
-    wnPos <- wnPartPOS (wnFixWord a)
-    let result1 = runs w (closureOnList Hypernym (search (wnFixWord a) wnPos AllSenses)) -- [Maybe (Tree SearchResult)]
-    let result2 = (nub $ concat $ map (getWords . getSynset) (concat (map flatten (blah result1)))) \\ [a]
+    let result1 = runs w (closureOnList Hypernym (search (wnFixWord a) p AllSenses)) -- [Maybe (Tree SearchResult)]
+    let result2 = (nub $ concat $ map (getWords . getSynset) (concat (map flatten (unMaybe' result1)))) \\ [a]
     r <- rand (length result2)
     if null result2 then return a
     else return (replace '_' ' ' $ (result2 !! r))
   where
     rand b = io $ getStdRandom (randomR (0, (b - 1)))
-    blah [] = []
-    blah (x:xs)
-        | isNothing x = blah xs
-        | otherwise   = (fromJust x) : blah xs
+    unMaybe' [] = []
+    unMaybe' (x:xs)
+        | isNothing x = unMaybe' xs
+        | otherwise   = (fromJust x) : unMaybe' xs
 
 -- Munge sentence.
 wnReplaceMsg :: String -> String -> [String] -> Net ()
