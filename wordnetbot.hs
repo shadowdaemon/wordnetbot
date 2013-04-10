@@ -6,7 +6,7 @@ import Data.Tree (flatten)
 import Network
 import System.Random
 import System.Environment (getArgs, getProgName)
---import System.CPUTime
+import System.CPUTime
 --import System.Directory
 import System.Exit
 import System.IO
@@ -31,6 +31,8 @@ data Bot = Bot {
     owner :: IORef String,
     rejoinkick :: IORef Int,
     maxchanlines :: IORef Int
+    -- writetime :: IORef Integer,
+    -- delaytime :: IORef Integer
     }
 
 -- Stuff for changing bot operating parameters.
@@ -137,6 +139,9 @@ connect = notify $ do
     o <- newIORef owner
     rk <- newIORef 0
     m <- newIORef 2
+    -- t <- getCPUTime
+    -- wt <- newIORef t
+    -- dt <- newIORef 0
     return (Bot h w n o rk m)
   where
     notify a = bracket_
@@ -206,11 +211,6 @@ changeParam a b = do
       RejoinKick   -> io $ writeIORef rk (read b)
       MaxChanLines -> io $ writeIORef m (read b)
       _            -> return ()
-
--- getCPUTimeSecs :: IO Double
--- getCPUTimeSecs = do
---    a <- getCPUTime
---    return (fromInteger a / 1000000000)
 
 -- Get the actual message.
 getMsg :: [String] -> [String]
@@ -359,6 +359,24 @@ write s t = do
     h <- asks socket
     io $ hPrintf h "%s %s\r\n" s t
     io $ printf    "> %s %s\n" s t
+
+-- This version is supposed to prevent flooding, but there are problems...
+-- write :: String -> String -> Net ()
+-- write s t = do
+--     h <- asks socket
+--     w <- asks writetime
+--     ww <- io $ readIORef w
+--     d <- asks delaytime
+--     dd <- io $ readIORef d
+--     a <- io $ getCPUTime
+--     let d1 = ((realToFrac (a - ww)) / 1000) :: Double
+--     let d2 = if d1 < 3500000 then 3000000 else 0
+--     let delaytime' = if d1 > 8000000 then 0 else dd + d2
+--     io $ printf "delaytime: %d   diff: %f\n  now: %d    then: %d\n" delaytime' d1 a ww
+--     io $ writeIORef w a
+--     io $ writeIORef d delaytime'
+--     io $ forkIO (threadDelay (fromInteger delaytime') >> hPrintf h "%s %s\r\n" s t) >> return ()
+--     io $ printf    "> %s %s\n" s t
 
 -- Convenience.
 io :: IO a -> Net a
