@@ -46,6 +46,7 @@ module NLP.WordNet
      -- * The agglomeration functions
      relatedBy,
      relatedByList,
+     relatedByListAllForms,
      -- closure,
      closureOn,
      closureOnList,
@@ -207,6 +208,11 @@ relatedBy form sr = map lookupKey $ srFormKeys sr form
 relatedByList :: WN (Form -> [SearchResult] -> Maybe [[SearchResult]])
 relatedByList form [] = Nothing
 relatedByList form sr = Just (map (relatedBy form) sr)
+
+relatedByListAllForms :: WN ([SearchResult] -> [Maybe [[SearchResult]]])
+relatedByListAllForms sr = map (relatedByList' sr) (init T.allForm)
+  where
+    relatedByList' a b = relatedByList b a
 
 -- | This is a utility function to build lazy trees from a function and a root.
 closure :: (a -> [a]) -> a -> Tree a

@@ -63,7 +63,6 @@ instance Ix EPOS where
   index (i,j) a = fromEnum a - fromEnum i
   inRange (i,j) a = a `elem` [i..j]
 
-
 readEPOS :: String -> EPOS
 readEPOS a | (map toLower a) == "n"           = POS Noun
 readEPOS a | (map toLower a) == "v"           = POS Verb
@@ -77,7 +76,7 @@ readEPOS a | (map toLower a) == "adv"         = POS Adv
 readEPOS a | (map toLower a) == "adjective"   = POS Adj
 readEPOS a | (map toLower a) == "adverb"      = POS Adv
 readEPOS a | (map toLower a) == "satellite"   = Satellite
-readEPOS _                                  = UnknownEPos
+readEPOS _                                    = UnknownEPos
 
 data WordNetEnv =
      WordNetEnv {
@@ -130,7 +129,6 @@ data Synset =
        frames :: [(Int, Int)],
        defn :: String,
        key :: Maybe Offset,
-
        searchType :: Int,
        headWord :: String,
        headSense :: SenseType

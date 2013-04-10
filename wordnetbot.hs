@@ -452,7 +452,9 @@ wnRelated a b c d  e  = do
     mm <- io $ readIORef m
     let wnForm = readForm d
     let wnPos = fromEPOS $ readEPOS e
-    let result = fromMaybe [[]] (runs w (relatedByList wnForm (search (wnFixWord c) wnPos AllSenses)))
+    let result = if (map toLower d) == "all" then concat $ map (fromMaybe [[]])
+                    (runs w (relatedByListAllForms (search (wnFixWord c) wnPos AllSenses)))
+                 else fromMaybe [[]] (runs w (relatedByList wnForm (search (wnFixWord c) wnPos AllSenses)))
     if (null result) || (null $ concat result) then return "Nothing!" >>= replyMsg a b else
       if (wnLength result) > mm then wnRelated' b b result else wnRelated' a b result -- Redirect reply to prevent channel spam.
   where
@@ -531,11 +533,11 @@ wnReplaceWord a b = do
     w <- asks wne
     wnPos1 <- wnPartPOS (wnFixWord a)
     wnPos2 <- wnPartPOS (wnFixWord b)
-    let wnPos3 = newPos wnPos1 wnPos2
-    let result1 = fromMaybe [[]] (runs w (relatedByList Hypernym (search (wnFixWord a) wnPos3 AllSenses)))
+    -- let wnPos3 = newPos wnPos1 wnPos2
+    let result1 = concat $ map (fromMaybe [[]]) (runs w (relatedByListAllForms (search (wnFixWord a) wnPos1 AllSenses)))
     let result2 = concat $ map (getWords . getSynset) (concat result1)
     r <- rand (length result2)
-    if (null result1) || (null $ concat result1) then wnReplaceWord2 wnPos3 a
+    if (null result1) || (null $ concat result1) then wnReplaceWord2 wnPos1 a
     else return (replace '_' ' ' $ (result2 !! r))
   where
     rand b = io $ getStdRandom (randomR (0, (b - 1)))
