@@ -546,21 +546,17 @@ wnMeet a b c d e  = do
 {- Fun stuff. -}
 
 -- Replace a word.
-wnReplaceWord :: String -> String -> Net String
-wnReplaceWord a b = do
+wnReplaceWord :: String -> Net String
+wnReplaceWord a = do
     w <- asks wne
-    wnPos1 <- wnPartPOS (wnFixWord a)
-    wnPos2 <- wnPartPOS (wnFixWord b)
-    -- let wnPos3 = newPos wnPos1 wnPos2
-    let result1 = concat $ map (fromMaybe [[]]) (runs w (relatedByListAllForms (search (wnFixWord a) wnPos1 AllSenses)))
+    wnPos <- wnPartPOS (wnFixWord a)
+    let result1 = concat $ map (fromMaybe [[]]) (runs w (relatedByListAllForms (search (wnFixWord a) wnPos AllSenses)))
     let result2 = concat $ map (getWords . getSynset) (concat result1)
     r <- rand (length result2)
-    if (null result1) || (null $ concat result1) then wnReplaceWord2 wnPos1 a
+    if (null result1) || (null $ concat result1) then wnReplaceWord2 wnPos a
     else return (replace '_' ' ' $ (result2 !! r))
   where
     rand b = io $ getStdRandom (randomR (0, (b - 1)))
-    newPos a b = if a == b && a == Noun then Verb else
-                   if a == Verb then Noun else Adj
 
 -- Replace a word.
 wnReplaceWord2 :: POS -> String -> Net String
@@ -584,23 +580,10 @@ wnReplaceMsg _ _ [] = return () :: Net ()
 wnReplaceMsg a b c  = wnReplaceMsg' 0 a b c
   where
     wnReplaceMsg' n a b c = do
-      let l = length c
       if n == 0 then replyMsg' a b else return ()
-      -- if l > 1 then do
-      --   w1 <- wnReplaceWord (c!!0)
-      --   w2 <- wnReplaceWord (c!!1)
-      --   return (w1 ++ " " ++ w2 ++ " ") >>= write'
-      --   wnReplaceMsg' (n + 1) a b (drop 2 c) >> return ()
-      -- else return "\r\n" >>= write'
-      -- if l > 0 then do
-      --   w <- wnReplaceWord (c!!0)
-      --   return (w ++ " ") >>= write'
-      --   wnReplaceMsg' (n + 1) a b (drop 1 c) >> return ()
-      -- else return "\r\n" >>= write'
-      case l of
+      case (length c) of
         0 -> return "\r\n" >>= write'
-        1 -> do w <- wnReplaceWord (c!!0) ""     ; return (w ++ " ") >>= write' ; wnReplaceMsg' (n + 1) a b (drop 1 c) >> return ()
-        _ -> do w <- wnReplaceWord (c!!0) (c!!1) ; return (w ++ " ") >>= write' ; wnReplaceMsg' (n + 1) a b (drop 1 c) >> return ()        
+        _ -> do w <- wnReplaceWord (c!!0) ; return (w ++ " ") >>= write' ; wnReplaceMsg' (n + 1) a b (drop 1 c) >> return ()
     replyMsg' :: String -> String -> Net ()
     replyMsg' chan nick
         | chan == nick  = write' ("PRIVMSG " ++ nick ++ " :") -- PM.
