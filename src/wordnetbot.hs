@@ -198,7 +198,7 @@ joinChannel a (x:xs) = do
     if a == "JOIN" || a == "PART" then do
       write a x
       joinChannel a xs
-    else return ()
+        else return ()
 
 -- Change bot operating parameters.
 changeParam :: String -> String -> Net ()
@@ -479,7 +479,7 @@ wnRelated a b c d  e  = do
     wnRelated' _ _ []     = return ()
     wnRelated' a b (x:xs) = do
       if (null x) then return ()
-      else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset) x) >>= replyMsg a b
+        else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ concat $ map (getWords . getSynset) x) >>= replyMsg a b
       wnRelated' a b xs
 
 -- Wordnet search.
@@ -503,7 +503,7 @@ wnClosure a b c d  e  = do
     wnClosure' 20 _ _ _      = return () -- "20" here is a recursion limit (just in case).
     wnClosure' a  b c (x:xs) = do
       if isNothing x then return ()
-      else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
+        else return (replace '_' ' ' $ unwords $ map (++ "\"") $ map ('"' :) $ nub $ concat $ map (getWords . getSynset)
              (flatten (fromJust x))) >>= replyMsg b c
       wnClosure' (a+1) b c xs
 
@@ -554,7 +554,7 @@ wnReplaceWord a = do
     let result2 = concat $ map (getWords . getSynset) (concat result1)
     r <- rand (length result2)
     if (null result1) || (null $ concat result1) then wnReplaceWord2 wnPos a
-    else return (replace '_' ' ' $ (result2 !! r))
+      else return (replace '_' ' ' $ (result2 !! r))
   where
     rand b = io $ getStdRandom (randomR (0, (b - 1)))
 
@@ -566,7 +566,7 @@ wnReplaceWord2 p a = do
     let result2 = (nub $ concat $ map (getWords . getSynset) (concat (map flatten (unMaybe' result1)))) \\ [a]
     r <- rand (length result2)
     if null result2 then return a
-    else return (replace '_' ' ' $ (result2 !! r))
+      else return (replace '_' ' ' $ (result2 !! r))
   where
     rand b = io $ getStdRandom (randomR (0, (b - 1)))
     unMaybe' [] = []

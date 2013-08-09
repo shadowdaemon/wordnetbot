@@ -45,4 +45,3 @@ Executable wordnetbot
         ScopedTypeVariables
         FlexibleInstances
         FlexibleContexts
-        DoAndIfThenElse
