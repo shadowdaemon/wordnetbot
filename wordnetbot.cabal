@@ -37,7 +37,6 @@ Executable wordnetbot
     Hs-source-dirs:  src
     Other-modules:   NLP.WordNet
     Extensions:
-        CPP
         DeriveDataTypeable
         ImplicitParams
         MultiParamTypeClasses
