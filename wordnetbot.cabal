@@ -1,20 +1,19 @@
 Name:            WordNetBot
 Version:         0.1.0
-Description:     Blah blah.
+Description:     WordNetBot performs WordNet lookups on IRC.
 Category:        IRC bot
 Synopsis:        WordNetBot performs WordNet lookups on IRC.
 License:         BSD3
-License-file:    /dev/null
+License-file:    src/NLP/LICENSE
 Author:          various
-Maintainer:      shadowdaemon
+Maintainer:      Tully Gray
 Build-type:      Simple
 Cabal-version:   >= 1.8
 
 Library
-    Build-depends: base == 4.*, containers, filepath, array
+    Build-depends:   base == 4.*, containers, filepath, array
     Hs-source-dirs:  src
-    Exposed-Modules:
-        NLP.WordNet
+    Exposed-Modules: NLP.WordNet
     Other-Modules:
         NLP.WordNet.Common
         NLP.WordNet.PrimTypes
@@ -34,7 +33,7 @@ Library
 
 Executable wordnetbot
     Main-is:         wordnetbot.hs
-    Build-depends: base == 4.*, containers, filepath, array, mtl, random, network
+    Build-depends:   base == 4.*, containers, filepath, array, mtl, random, network
     Hs-source-dirs:  src
     Other-modules:   NLP.WordNet
     Extensions:
@@ -47,4 +46,3 @@ Executable wordnetbot
         FlexibleInstances
         FlexibleContexts
         DoAndIfThenElse
-
