@@ -1,0 +1,32 @@
+Name:            WordNetBot
+Version:         0.1.0
+Description:     Blah blah.
+Category:        IRC bot
+Synopsis:        WordNetBot performs WordNet lookups on IRC.
+License:         WTFL
+License-file:    /dev/null
+Author:          various
+Maintainer:      shadowdaemon
+Build-type:      Simple
+Cabal-version:   >= 1.8
+
+Library
+    Build-depends: base == 4.*, containers, filepath, array
+    Hs-source-dirs:  src
+    Exposed-Modules:
+        NLP.WordNet
+    Other-Modules:
+        NLP.WordNet.Common
+        NLP.WordNet.PrimTypes
+        NLP.WordNet.Util
+        NLP.WordNet.Consts
+        NLP.WordNet.Prims
+        NLP.WordNet.Types
+    Extensions:     CPP, DeriveDataTypeable, ImplicitParams, MultiParamTypeClasses, RankNTypes, ScopedTypeVariables
+
+Executable wordnetbot
+    Main-is:         wordnetbot.hs
+    Build-depends: base == 4.*, containers, filepath, array, mtl, random, network
+    Hs-source-dirs:  src
+    Other-modules:   NLP.WordNet
+    Extensions:     CPP, DeriveDataTypeable, ImplicitParams, MultiParamTypeClasses, RankNTypes, ScopedTypeVariables, DoAndIfThenElse
