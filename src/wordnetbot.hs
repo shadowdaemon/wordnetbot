@@ -131,10 +131,10 @@ connect = do
     let nick    = cleanNick (args !! 2)
     let owner   = args !! 3
     let wndir   = args !! 5
-    h <- connectTo server (PortNumber (fromIntegral port))
-    hSetBuffering h NoBuffering
     w <- initializeWordNetWithOptions (return wndir :: Maybe FilePath) 
       (Just (\e f -> putStrLn (e ++ show (f :: SomeException))))
+    h <- connectTo server (PortNumber (fromIntegral port))
+    hSetBuffering h NoBuffering
     n <- newIORef nick
     o <- newIORef owner
     rk <- newIORef 0
