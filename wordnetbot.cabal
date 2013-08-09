@@ -3,7 +3,7 @@ Version:         0.1.0
 Description:     Blah blah.
 Category:        IRC bot
 Synopsis:        WordNetBot performs WordNet lookups on IRC.
-License:         WTFL
+License:         BSD3
 License-file:    /dev/null
 Author:          various
 Maintainer:      shadowdaemon
