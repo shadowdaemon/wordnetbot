@@ -124,7 +124,7 @@ cmdLine = do
 
 -- Connect to the server and return the initial bot state.  Initialize WordNet.
 connect :: IO Bot
-connect = notify $ do
+connect = do
     args <- cmdLine
     let server  = args !! 0
     let port    = read $ args !! 1
@@ -143,11 +143,6 @@ connect = notify $ do
     -- wt <- newIORef t
     -- dt <- newIORef 0
     return (Bot h w n o rk m)
-  where
-    notify a = bracket_
-        (printf "Connecting to wherever... " >> hFlush stdout)
-        (putStrLn "done.")
-        a
 
 -- Return owner.
 botOwner :: Net String
