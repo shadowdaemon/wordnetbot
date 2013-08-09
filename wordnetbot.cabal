@@ -22,11 +22,29 @@ Library
         NLP.WordNet.Consts
         NLP.WordNet.Prims
         NLP.WordNet.Types
-    Extensions:     CPP, DeriveDataTypeable, ImplicitParams, MultiParamTypeClasses, RankNTypes, ScopedTypeVariables
+    Extensions:
+        CPP
+        DeriveDataTypeable
+        ImplicitParams
+        MultiParamTypeClasses
+        RankNTypes
+        ScopedTypeVariables
+        FlexibleInstances
+        FlexibleContexts
 
 Executable wordnetbot
     Main-is:         wordnetbot.hs
     Build-depends: base == 4.*, containers, filepath, array, mtl, random, network
     Hs-source-dirs:  src
     Other-modules:   NLP.WordNet
-    Extensions:     CPP, DeriveDataTypeable, ImplicitParams, MultiParamTypeClasses, RankNTypes, ScopedTypeVariables, DoAndIfThenElse
+    Extensions:
+        CPP
+        DeriveDataTypeable
+        ImplicitParams
+        MultiParamTypeClasses
+        RankNTypes
+        ScopedTypeVariables
+        FlexibleInstances
+        FlexibleContexts
+        DoAndIfThenElse
+
